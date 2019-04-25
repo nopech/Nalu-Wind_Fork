@@ -18,15 +18,19 @@
 #include <master_element/Hex8CVFEM.h>
 #include <master_element/Hex27CVFEM.h>
 
+
 // NGP-based includes
 #include "SimdInterface.h"
 #include "KokkosInterface.h"
 #include "Kokkos_Array.hpp"
 #include <stk_ngp/Ngp.hpp>
+#include <stk_ngp/NgpFieldManager.hpp>
 
 #include "UnitTestUtils.h"
 #include "utils/CreateDeviceExpression.h"
 
+#include <ElemDataRequestsGPU.h>
+#include <SharedMemData.h>
 
 using TeamType = sierra::nalu::DeviceTeamHandleType;
 using ShmemType = sierra::nalu::DeviceShmem;
@@ -122,6 +126,7 @@ void check_interpolation(
   const int num_nodes  = AlgTraits::nodesPerElement_;
   const int num_int_pt = SCS ? AlgTraits::numScsIp_ : AlgTraits::numScvIp_;
   const int poly_order = num_nodes == 8 ? 1 : 2;
+  const int rhsSize    = num_nodes * num_nodes;
  
   ngp::Mesh ngpMesh(bulk);
 
@@ -172,12 +177,30 @@ void check_interpolation(
   const stk::mesh::BucketVector& elemBuckets = bulk.get_buckets(stk::topology::ELEM_RANK, all_local);
   auto team_exec = sierra::nalu::get_device_team_policy(elemBuckets.size(), bytes_per_team, bytes_per_thread);
 
+  ngp::FieldManager fieldMgr(bulk);
+  sierra::nalu::ElemDataRequests dataReq(bulk.mesh_meta_data());
+  dataReq.add_cvfem_volume_me(me);
+  dataReq.add_coordinates_field(*coordField, 3, sierra::nalu::CURRENT_COORDINATES);
+  if (SCS) {
+    dataReq.add_master_element_call(sierra::nalu::SCS_GRAD_OP, sierra::nalu::CURRENT_COORDINATES);
+    dataReq.add_master_element_call(sierra::nalu::SCS_MIJ,     sierra::nalu::CURRENT_COORDINATES);
+  } else {
+    dataReq.add_master_element_call(sierra::nalu::SCV_GRAD_OP, sierra::nalu::CURRENT_COORDINATES);
+    dataReq.add_master_element_call(sierra::nalu::SCV_MIJ,     sierra::nalu::CURRENT_COORDINATES);
+  }
+  EXPECT_EQ(1u, dataReq.get_fields().size());
+  // Comment out the next line to generate an error in Kokkos::View 
+  //sierra::nalu::ElemDataRequestsGPU dataNGP(fieldMgr, dataReq, meta.get_fields().size());
+
   Kokkos::parallel_for(team_exec, KOKKOS_LAMBDA(const sierra::nalu::DeviceTeamHandleType& team)
   {
     const ngp::Mesh::BucketType& b = ngpMesh.get_bucket(stk::topology::ELEM_RANK, team.league_rank());
 
     using ViewType = sierra::nalu::SharedMemView<DoubleType**,ShmemType>;
     ViewType shpfc = sierra::nalu::get_shmem_view_2D<DoubleType,TeamType,ShmemType>(team, num_int_pt, num_nodes);
+
+    //sierra::nalu::SharedMemData<TeamType,ShmemType> smdata(team, ngpMesh.get_spatial_dimension(), dataNGP, num_nodes, rhsSize);
+    //NGP_ThrowAssert(smdata.simdPrereqData.total_bytes() != 0);
 
     const size_t bucketLen   = b.size();
     Kokkos::parallel_for(Kokkos::TeamThreadRange(team, bucketLen), [&](const size_t& bktIndex)

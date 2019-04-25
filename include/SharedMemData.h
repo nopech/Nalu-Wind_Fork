@@ -14,6 +14,8 @@
 #include <KokkosInterface.h>
 #include <SimdInterface.h>
 
+#include <ScratchViews.h>
+
 #include <memory>
 
 namespace sierra{

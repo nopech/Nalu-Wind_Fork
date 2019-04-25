@@ -54,6 +54,7 @@ namespace nalu {
   KOKKOS_FUNCTION void generic_grad_op(const GradViewType& referenceGradWeights, const CoordViewType& coords, OutputViewType& weights)
   {
     constexpr int dim = AlgTraits::nDim_;
+    constexpr int npe = AlgTraits::nodesPerElement_;
 
     using ftype = typename CoordViewType::value_type;
     static_assert(std::is_same<ftype, typename GradViewType::value_type>::value,  "Incompatiable value type for views");
@@ -62,8 +63,8 @@ namespace nalu {
     static_assert(CoordViewType::Rank  ==   2, "Coordinate view assumed to be rank 2");
     static_assert(OutputViewType::Rank ==   3, "Weight view assumed to be rank 3");
 
-    ThrowAssert(AlgTraits::nodesPerElement_ == referenceGradWeights.extent(1));
-    ThrowAssert(AlgTraits::nDim_            == referenceGradWeights.extent(2));
+    ThrowAssert(npe == referenceGradWeights.extent(1));
+    ThrowAssert(dim == referenceGradWeights.extent(2));
     for (int i=0; i<dim; ++i)
       ThrowAssert(weights.extent(i) == referenceGradWeights.extent(i));
 
@@ -73,8 +74,8 @@ namespace nalu {
         for (int j=0; j<dim; ++j)
           jact[i][j] = ftype(0.0);
 
-      NALU_ALIGNED ftype refGrad[AlgTraits::nodesPerElement_][dim];
-      for (int n = 0; n < AlgTraits::nodesPerElement_; ++n) {
+      NALU_ALIGNED ftype refGrad[npe][dim];
+      for (int n = 0; n < npe; ++n) {
         for (int i=0; i<dim; ++i) {
           refGrad[n][i] = referenceGradWeights(ip, n, i);
         }
@@ -97,7 +98,7 @@ namespace nalu {
 
       NALU_ALIGNED const ftype inv_detj = ftype(1.0) / det;
 
-      for (int n = 0; n < AlgTraits::nodesPerElement_; ++n) {
+      for (int n = 0; n < npe; ++n) {
         for (int i=0; i<dim; ++i) {
           weights(ip, n, i) = ftype(0.0);
           for (int j=0; j<dim; ++j) {

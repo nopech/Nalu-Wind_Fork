@@ -116,7 +116,7 @@ void HexSCV::grad_op(
   SharedMemView<DoubleType***, DeviceShmem>&gradop,
   SharedMemView<DoubleType***, DeviceShmem>&deriv)
 {
-  hex8_derivative(numIntPoints_, &intgLoc_[0], deriv);
+  hex8_derivative(numIntPoints_, intgLoc_, deriv);
   generic_grad_op<AlgTraitsHex8>(deriv, coords, gradop);
 }
 
@@ -252,7 +252,7 @@ void HexSCS::grad_op(
   SharedMemView<DoubleType***, DeviceShmem>&gradop,
   SharedMemView<DoubleType***, DeviceShmem>&deriv)
 {
-  hex8_derivative(numIntPoints_, &intgLoc_[0], deriv);
+  hex8_derivative(numIntPoints_, intgLoc_, deriv);
   generic_grad_op<AlgTraitsHex8>(deriv, coords, gradop);
  }
 
