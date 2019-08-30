@@ -74,7 +74,6 @@
 
 // actuator line
 #include <Actuator.h>
-#include <ActuatorLinePointDrag.h>
 #ifdef NALU_USES_OPENFAST
 #include <ActuatorLineFAST.h>
 #include <ActuatorDiskFAST.h>
@@ -267,8 +266,7 @@ namespace nalu{
 //--------------------------------------------------------------------------
 Realm::~Realm()
 {
-  ngpFieldMgr_.reset();
-  ngpMesh_.reset();
+  meshInfo_.reset();
 
   delete bulkData_;
   delete metaData_;
@@ -612,10 +610,6 @@ Realm::look_ahead_and_creation(const YAML::Node & node)
     if ( (*foundActuator[0])["actuator"]["type"] ) {
       const std::string ActuatorTypeName = (*foundActuator[0])["actuator"]["type"].as<std::string>() ;
       switch ( ActuatorTypeMap[ActuatorTypeName] ) {
-      case ActuatorType::ActLinePointDrag : {
-	actuator_ =  new ActuatorLinePointDrag(*this, *foundActuator[0]);
-	break;
-      }
       case ActuatorType::ActLineFAST : {
 #ifdef NALU_USES_OPENFAST
 	actuator_ =  new ActuatorLineFAST(*this, *foundActuator[0]);
@@ -1705,7 +1699,7 @@ Realm::makeSureNodesHaveValidTopology()
 {
   //To make sure nodes have valid topology, we have to make sure they are in a part that has NODE topology.
   //So first, let's obtain the node topology part:
-  stk::mesh::Part& nodePart = bulkData_->mesh_meta_data().get_cell_topology_root_part(stk::mesh::get_cell_topology(stk::topology::NODE));
+  const stk::mesh::Part& nodePart = bulkData_->mesh_meta_data().get_topology_root_part(stk::topology::NODE);
   stk::mesh::Selector nodesNotInNodePart = (!nodePart) & bulkData_->mesh_meta_data().locally_owned_part();
 
   //get all the nodes that are *NOT* in nodePart
@@ -1903,15 +1897,11 @@ Realm::pre_timestep_work()
       initialize_non_conformal();
 
     // and overset algorithm
-    if ( hasOverset_ ) {
+    if ( hasOverset_ )
       initialize_overset();
 
-      // Only need to reset HYPRE IDs when overset inactive rows change
-      set_hypre_global_id();
-    }
-
     // Reset the ngp::Mesh instance
-    ngpMesh_.reset(new ngp::Mesh(*bulkData_));
+    meshInfo_.reset(new typename Realm::NgpMeshInfo(*bulkData_));
 
     // now re-initialize linear system
     equationSystems_.reinitialize_linear_system();
@@ -2107,6 +2097,7 @@ Realm::create_mesh()
     edgesPart_ = &metaData_->declare_part("create_edges_part", stk::topology::EDGE_RANK);
   }
 
+  meshInfo_.reset(new typename Realm::NgpMeshInfo(*bulkData_));
   // set mesh creation
   const double end_time = NaluEnv::self().nalu_time();
   timerCreateMesh_ = (end_time - start_time);
@@ -3120,6 +3111,10 @@ Realm::setup_overset_bc(
       NaluEnv::self().naluOutputP0()
         << "Realm::setup_overset_bc:: Selecting STK-based overset connectivity algorithm"
         << std::endl;
+      if (solutionOptions_->meshMotion_)
+        NaluEnv::self().naluOutputP0()
+          << "WARNING:: Using STK-based overset with mesh motion has not been tested "
+          << std::endl;
       oversetManager_ = new OversetManagerSTK(*this, oversetBCData.userData_);
       break;
 

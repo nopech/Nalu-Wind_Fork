@@ -11,7 +11,6 @@
 
 #include "kernel/ContinuityAdvElemKernel.h"
 
-#ifndef KOKKOS_ENABLE_CUDA
 namespace {
 namespace hex8_golds {
 namespace advection_default {
@@ -59,8 +58,6 @@ static constexpr double lhs[8][8] = {
 } // hex8_golds
 } // anonymous namespace
 
-#endif
-
 /// Continuity advection with default Solution options
 TEST_F(ContinuityKernelHex8Mesh, NGP_advection_default)
 {
@@ -92,9 +89,8 @@ TEST_F(ContinuityKernelHex8Mesh, NGP_advection_default)
   helperObjs.assembleElemSolverAlg->activeKernels_.push_back(advKernel.get());
 
   // Populate LHS and RHS
-  helperObjs.assembleElemSolverAlg->execute();
+  helperObjs.execute();
 
-#ifndef KOKKOS_ENABLE_CUDA
   EXPECT_EQ(helperObjs.linsys->lhs_.extent(0), 8u);
   EXPECT_EQ(helperObjs.linsys->lhs_.extent(1), 8u);
   EXPECT_EQ(helperObjs.linsys->rhs_.extent(0), 8u);
@@ -103,7 +99,6 @@ TEST_F(ContinuityKernelHex8Mesh, NGP_advection_default)
 
   unit_test_kernel_utils::expect_all_near(helperObjs.linsys->rhs_, gold_values::rhs);
   unit_test_kernel_utils::expect_all_near<8>(helperObjs.linsys->lhs_, gold_values::lhs);
-#endif
 }
 
 /// Continuity advection kernel
@@ -140,9 +135,8 @@ TEST_F(ContinuityKernelHex8Mesh, NGP_advection_reduced_sens_cvfem_poisson)
   helperObjs.assembleElemSolverAlg->activeKernels_.push_back(advKernel.get());
 
   // Populate LHS and RHS
-  helperObjs.assembleElemSolverAlg->execute();
+  helperObjs.execute();
 
-#ifndef KOKKOS_ENABLE_CUDA
   EXPECT_EQ(helperObjs.linsys->lhs_.extent(0), 8u);
   EXPECT_EQ(helperObjs.linsys->lhs_.extent(1), 8u);
   EXPECT_EQ(helperObjs.linsys->rhs_.extent(0), 8u);
@@ -151,7 +145,6 @@ TEST_F(ContinuityKernelHex8Mesh, NGP_advection_reduced_sens_cvfem_poisson)
 
   unit_test_kernel_utils::expect_all_near(helperObjs.linsys->rhs_, gold_values::rhs);
   unit_test_kernel_utils::expect_all_near<8>(helperObjs.linsys->lhs_, gold_values::lhs);
-#endif
 }
 
 /// Continuity advection kernel
@@ -188,9 +181,8 @@ TEST_F(ContinuityKernelHex8Mesh, NGP_advection_reduced_shift_cvfem_poisson)
   helperObjs.assembleElemSolverAlg->activeKernels_.push_back(advKernel.get());
 
   // Populate LHS and RHS
-  helperObjs.assembleElemSolverAlg->execute();
+  helperObjs.execute();
 
-#ifndef KOKKOS_ENABLE_CUDA
   EXPECT_EQ(helperObjs.linsys->lhs_.extent(0), 8u);
   EXPECT_EQ(helperObjs.linsys->lhs_.extent(1), 8u);
   EXPECT_EQ(helperObjs.linsys->rhs_.extent(0), 8u);
@@ -199,5 +191,4 @@ TEST_F(ContinuityKernelHex8Mesh, NGP_advection_reduced_shift_cvfem_poisson)
 
   unit_test_kernel_utils::expect_all_near(helperObjs.linsys->rhs_, gold_values::rhs);
   unit_test_kernel_utils::expect_all_near<8>(helperObjs.linsys->lhs_, gold_values::lhs);
-#endif
 }

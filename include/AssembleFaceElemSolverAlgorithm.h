@@ -16,6 +16,7 @@
 #include <SimdInterface.h>
 #include <SharedMemData.h>
 #include <CopyAndInterleave.h>
+#include <ngp_utils/NgpMEUtils.h>
 
 namespace stk {
 namespace mesh {
@@ -45,19 +46,12 @@ public:
       int nDim = bulk.mesh_meta_data().spatial_dimension();
       int totalNumFields = bulk.mesh_meta_data().get_fields().size();
 
-      sierra::nalu::MasterElement* meFC = faceDataNeeded_.get_cvfem_face_me();
-      sierra::nalu::MasterElement* meSCS = faceDataNeeded_.get_cvfem_surface_me();
-      sierra::nalu::MasterElement* meSCV = faceDataNeeded_.get_cvfem_volume_me();
+      // Register face ME instance in elemdata also to obtain face integration points
+      if (elemDataNeeded_.get_cvfem_face_me() == nullptr)
+        elemDataNeeded_.add_cvfem_face_me(faceDataNeeded_.get_cvfem_face_me());
 
-      sierra::nalu::ScratchMeInfo meElemInfo;
-      meElemInfo.nodalGatherSize_ = nodesPerElem_;
-      meElemInfo.nodesPerFace_ = nodesPerFace_;
-      meElemInfo.nodesPerElement_ = nodesPerElem_;
-      meElemInfo.numFaceIp_ = meFC != nullptr ? meFC->num_integration_points() : 0;
-      meElemInfo.numScsIp_ = meSCS != nullptr ? meSCS->num_integration_points() : 0;
-      meElemInfo.numScvIp_ = meSCV != nullptr ? meSCV->num_integration_points() : 0;
-
-      int rhsSize = meElemInfo.nodalGatherSize_*numDof_, lhsSize = rhsSize*rhsSize, scratchIdsSize = rhsSize;
+      int rhsSize = nodesPerElem_ * numDof_, lhsSize = rhsSize * rhsSize,
+          scratchIdsSize = rhsSize;
 
       const ngp::Mesh& ngpMesh = realm_.ngp_mesh();
       const ngp::FieldManager& fieldMgr = realm_.ngp_field_manager();
@@ -66,9 +60,10 @@ public:
 
       const int bytes_per_team = 0;
       const int bytes_per_thread = calculate_shared_mem_bytes_per_thread(
-        lhsSize, rhsSize, scratchIdsSize, nDim, faceDataNGP, elemDataNGP,
-        meElemInfo);
+        lhsSize, rhsSize, scratchIdsSize, nDim, faceDataNGP, elemDataNGP);
 
+      const auto nodesPerFace = nodesPerFace_;
+      const auto nodesPerElem = nodesPerElem_;
       stk::mesh::Selector s_locally_owned_union =
         bulk.mesh_meta_data().locally_owned_part() &
         stk::mesh::selectUnion(partVec_);
@@ -91,7 +86,8 @@ public:
 #endif
 
           SharedMemData_FaceElem<DeviceTeamHandleType, DeviceShmem> smdata(
-            team, nDim, faceDataNGP, elemDataNGP, meElemInfo, rhsSize);
+            team, nDim, faceDataNGP, elemDataNGP, nodesPerFace, nodesPerElem,
+            rhsSize);
 
           const size_t bucketLen = b.size();
           const size_t simdBucketLen =
@@ -139,22 +135,17 @@ public:
                 numFacesProcessed += simdFaceIndex;
 
 #ifndef KOKKOS_ENABLE_CUDA
-                // When we GPU-ize AssembleFaceElemSolverAlgorithm, 'lambdaFunc'
-                // below will need to operate on the non-simd smdata.faceViews
-                // etc... since we aren't going to copy_and_interleave. We will
-                // probably want to make smdata.simdFaceViews be a
-                // pointer/reference to smdata.faceViews[0] in some way...
+                // No need to interleave on GPUs
                 copy_and_interleave(
                   smdata.faceViews, smdata.numSimdFaces, smdata.simdFaceViews);
                 copy_and_interleave(
                   smdata.elemViews, smdata.numSimdFaces, smdata.simdElemViews);
+#endif
 
                 fill_master_element_views(
                   faceDataNGP, smdata.simdFaceViews, smdata.elemFaceOrdinal);
                 fill_master_element_views(
                   elemDataNGP, smdata.simdElemViews, smdata.elemFaceOrdinal);
-//for now this simply isn't ready for GPU.
-#endif
 
                 lamdbaFunc(smdata);
               } while (numFacesProcessed < simdGroupLen);

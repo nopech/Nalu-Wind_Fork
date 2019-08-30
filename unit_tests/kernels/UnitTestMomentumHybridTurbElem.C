@@ -268,13 +268,10 @@ static constexpr double lhs[24][24] = {
   },
 };
 } // namespace MomentumHybridTurbElemKernel
-
 } // namespace hex8_golds
 } // anonymous namespace
 
-#ifndef KOKKOS_ENABLE_CUDA
-
-TEST_F(HybridTurbKernelHex8Mesh, MomentumHybridTurbElemKernel)
+TEST_F(HybridTurbKernelHex8Mesh, NGP_momentum_hybrid_turb_elem_kernel)
 {
   fill_mesh_and_init_fields();
 
@@ -297,7 +294,7 @@ TEST_F(HybridTurbKernelHex8Mesh, MomentumHybridTurbElemKernel)
   helperObjs.assembleElemSolverAlg->activeKernels_.push_back(kernel.get());
 
   // Populate LHS and RHS
-  helperObjs.assembleElemSolverAlg->execute();
+  helperObjs.execute();
 
   EXPECT_EQ(helperObjs.linsys->lhs_.extent(0), 24u);
   EXPECT_EQ(helperObjs.linsys->lhs_.extent(1), 24u);
@@ -309,6 +306,4 @@ TEST_F(HybridTurbKernelHex8Mesh, MomentumHybridTurbElemKernel)
   unit_test_kernel_utils::expect_all_near<24>(
     helperObjs.linsys->lhs_, gold_values::lhs);
 }
-
-#endif
 

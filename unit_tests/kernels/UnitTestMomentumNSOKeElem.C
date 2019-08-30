@@ -11,6 +11,7 @@
 
 #include "nso/MomentumNSOKeElemKernel.h"
 
+#ifndef KOKKOS_ENABLE_CUDA
 namespace  {
 namespace hex8_golds {
 namespace nso_ke {
@@ -268,7 +269,6 @@ namespace nso_ke {
 } // hex8_golds
 } // anonymous namespace
 
-#ifndef KOKKOS_ENABLE_CUDA
 
 TEST_F(MomentumKernelHex8Mesh, nso_ke)
 {
@@ -292,7 +292,7 @@ TEST_F(MomentumKernelHex8Mesh, nso_ke)
   helperObjs.assembleElemSolverAlg->activeKernels_.push_back(kernel.get());
 
   // Populate LHS and RHS
-  helperObjs.assembleElemSolverAlg->execute();
+  helperObjs.execute();
 
   EXPECT_EQ(helperObjs.linsys->lhs_.extent(0), 24u);
   EXPECT_EQ(helperObjs.linsys->lhs_.extent(1), 24u);
