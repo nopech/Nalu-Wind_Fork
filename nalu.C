@@ -146,7 +146,7 @@ int main( int argc, char ** argv )
     pprint = true;
   }
   // deal with log file stream
-  naluEnv.set_log_file_stream(logFileName, pprint);
+//  naluEnv.set_log_file_stream(logFileName, pprint);
 
   // proceed with reading input file "document" from YAML
   YAML::Node doc = YAML::LoadFile(inputFileName.c_str());

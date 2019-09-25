@@ -1,5 +1,6 @@
 *~
-/build
+/build/*
+!/build/do-config*
 *.swp
 /GCC_4.4.4_OPT/
 /LAMENT_GCC_4.4.4_OPT/
