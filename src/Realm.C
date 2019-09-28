@@ -3261,7 +3261,10 @@ Realm::provide_output()
     }
 
     const bool isOutput 
-      = (timeStepCount >=outputInfo_->outputStart_ && modStep % outputInfo_->outputFreq_ == 0) || forcedOutput;
+      = (timeStepCount >=outputInfo_->outputStart_ 
+      && modStep % outputInfo_->outputFreq_ == 0) 
+      || forcedOutput
+      || root()->timeIntegrator_->steady_;
 
     if ( isOutput ) {
       NaluEnv::self().naluOutputP0() << "Realm shall provide output files at : currentTime/timeStepCount: "

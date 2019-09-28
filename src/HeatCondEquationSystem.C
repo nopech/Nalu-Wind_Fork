@@ -417,16 +417,19 @@ HeatCondEquationSystem::register_interior_algorithm(
     solverAlgDriver_->solverAlgMap_[algMass] = theAlg;
 
     // now create the supplemental alg for mass term
-    if ( realm_.number_of_states() == 2 ) {
-      HeatCondMassBackwardEulerNodeSuppAlg *theMass
-        = new HeatCondMassBackwardEulerNodeSuppAlg(realm_);
-      theAlg->supplementalAlg_.push_back(theMass);
-    }
-    else {
-      HeatCondMassBDF2NodeSuppAlg *theMass
-        = new HeatCondMassBDF2NodeSuppAlg(realm_);
-      theAlg->supplementalAlg_.push_back(theMass);
-    }
+    // only if not simulation is not steady
+      if ( !root()->timeIntegrator_->steady_ ) {
+        if ( realm_.number_of_states() == 2 ) {
+          HeatCondMassBackwardEulerNodeSuppAlg *theMass
+            = new HeatCondMassBackwardEulerNodeSuppAlg(realm_);
+          theAlg->supplementalAlg_.push_back(theMass);
+        }
+        else {
+          HeatCondMassBDF2NodeSuppAlg *theMass
+            = new HeatCondMassBDF2NodeSuppAlg(realm_);
+          theAlg->supplementalAlg_.push_back(theMass);
+        }
+      }
 
     // Add src term supp alg...; limited number supported
     std::map<std::string, std::vector<std::string> >::iterator isrc 

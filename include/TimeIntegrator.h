@@ -58,6 +58,7 @@ public:
   bool adaptiveTimeStep_;
   bool terminateBasedOnTime_;
   int nonlinearIterations_;
+  bool steady_;
 
   std::string name_;
 
