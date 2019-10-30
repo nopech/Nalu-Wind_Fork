@@ -10,4 +10,5 @@ add_sources(GlobalSourceList
    QuadNElementDescription.C
    QuadratureRule.C
    TensorProductQuadratureRule.C
+   TriNElementDescription.C
 )

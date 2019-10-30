@@ -22,7 +22,12 @@
 #include "master_element/Edge32DCVFEM.h"
 #include "master_element/Edge22DCVFEM.h"
 #include "master_element/Tri33DCVFEM.h"
-#include "master_element/MasterElementHO.h"
+#include "master_element/HigherOrderEdge2DSCS.h"
+#include "master_element/HigherOrderQuad2DSCS.h"
+#include "master_element/HigherOrderQuad2DSCV.h"
+#include "master_element/HigherOrderQuad3DSCS.h"
+#include "master_element/HigherOrderTri2DSCS.h"
+#include "master_element/HigherOrderTri2DSCV.h"
 
 #include "NaluEnv.h"
 #include "nalu_make_unique.h"
@@ -164,28 +169,56 @@ namespace nalu{
 
     auto desc = ElementDescription::create(dimension, topo);
 
+    std::cout << "Is superelement? " << topo.is_superelement() << std::endl;
     auto basis = (topo.is_superelement()) ?
         LagrangeBasis(desc->inverseNodeMap, desc->nodeLocs1D)
       : LagrangeBasis(desc->inverseNodeMapBC, desc->nodeLocs1D);
 
-    auto quad = TensorProductQuadratureRule(desc->polyOrder);
+    std::pair<int, int>endPoints;
+    if (desc->baseTopo == stk::topology::TRI_3_2D) {
+      endPoints = std::make_pair(0, 1);
+    }
+    else {
+      endPoints = std::make_pair(-1, 1);
+    }
+    
+    auto quad = TensorProductQuadratureRule(desc->polyOrder, endPoints);
 
     if (topo.is_superedge()) {
-      ThrowRequire(desc->baseTopo == stk::topology::QUAD_4_2D);
+      ThrowRequireMsg(desc->baseTopo == stk::topology::QUAD_4_2D || 
+                      desc->baseTopo == stk::topology::TRI_3_2D,
+                      "sorry, we only support Quad_4_2D and TRI_3_2D base topology for superedges");
       return make_unique<HigherOrderEdge2DSCS>(basis, quad);
     }
 
     if (topo.is_superface()) {
-      ThrowRequire(desc->baseTopo == stk::topology::HEX_8);
-      return make_unique<HigherOrderQuad3DSCS>(basis, quad);
+      switch ( desc->baseTopo ) {
+      
+        case stk::topology::HEX_8:
+          return make_unique<HigherOrderQuad3DSCS>(basis, quad);
+
+        default:
+          ThrowRequireMsg(false, "sorry, we only support HEX_8 base topology for superfaces");
+          break;
+      }
     }
 
-    if (topo.is_superelement() && desc->baseTopo == stk::topology::QUAD_4_2D) {
-      return make_unique<HigherOrderQuad2DSCS>(basis, quad);
-    }
+    if (topo.is_superelement()) {
+      switch ( desc->baseTopo ) {
+      
+        case stk::topology::QUAD_4_2D:
+          return make_unique<HigherOrderQuad2DSCS>(basis, quad);
 
-    if (topo.is_superelement() && desc->baseTopo == stk::topology::HEX_8) {
-      return make_unique<HigherOrderHexSCS>(basis, quad);
+        case stk::topology::TRI_3_2D:
+          return make_unique<HigherOrderTri2DSCS>(basis, quad);
+          
+        case stk::topology::HEX_8:
+          return make_unique<HigherOrderHexSCS>(basis, quad);
+
+        default:
+          ThrowRequireMsg(false, "sorry, we only support QUAD_4_2D, TRI_3_2D and HEX_8 base topology for superelements");
+          break;
+      }
     }
 
     return nullptr;
@@ -206,15 +239,31 @@ namespace nalu{
 
     auto desc = ElementDescription::create(dimension, topo);
     auto basis = LagrangeBasis(desc->inverseNodeMap, desc->nodeLocs1D);
-    auto quad = TensorProductQuadratureRule(desc->polyOrder);
 
+    std::pair<int, int>endPoints;
+    if (desc->baseTopo == stk::topology::TRI_3_2D) {
+      endPoints = std::make_pair(0, 1);
+    }
+    else {
+      endPoints = std::make_pair(-1, 1);
+    }
+    
+    auto quad = TensorProductQuadratureRule(desc->polyOrder, endPoints);
+    
+    
     switch (desc->baseTopo.value()) {
-      case stk::topology::QUADRILATERAL_4_2D:
+      
+      case stk::topology::QUAD_4_2D:
         return make_unique<HigherOrderQuad2DSCV>(basis, quad);
-      case stk::topology::HEXAHEDRON_8:
+        
+      case stk::topology::TRI_3_2D:
+        return make_unique<HigherOrderTri2DSCV>(basis, quad);
+      
+      case stk::topology::HEX_8:
         return make_unique<HigherOrderHexSCV>(basis, quad);
+      
       default:
-        NaluEnv::self().naluOutputP0() << "High order elements only support base quad4 and hex8 meshes" << std::endl;
+        NaluEnv::self().naluOutputP0() << "sorry, we only support QUAD_4_2D, TRI_3_2D and HEX_8 base topology for superelements" << std::endl;
         break;
     }
     return nullptr;

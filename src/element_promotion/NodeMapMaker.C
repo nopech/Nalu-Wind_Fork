@@ -46,7 +46,7 @@ Kokkos::View<int***> make_node_map_hex(int p, bool isPromoted)
 
   const int nodes1D = p + 1;
   Kokkos::View<int***> node_map("node_map", nodes1D, nodes1D, nodes1D);
-  auto desc = ElementDescription::create(3, p);
+  auto desc = ElementDescription::create(3, p, stk::topology::HEX_8);
   for (int k = 0; k < nodes1D; ++k) {
     for (int j = 0; j < nodes1D; ++j) {
       for (int i = 0; i < nodes1D; ++i) {
@@ -61,10 +61,26 @@ Kokkos::View<int**> make_node_map_quad(int p)
 {
   const int nodes1D = p + 1;
   Kokkos::View<int**> node_map("node_map", nodes1D, nodes1D);
-  auto desc = ElementDescription::create(2, p);
+  auto desc = ElementDescription::create(2, p, stk::topology::QUAD_4_2D);
     for (int j = 0; j < nodes1D; ++j) {
       for (int i = 0; i < nodes1D; ++i) {
         node_map(j,i) = desc->node_map(i,j);
+      }
+    }
+  return node_map;
+}
+
+// Workaround, Kokkos View is actually bigger than the number of nodes
+Kokkos::View<int**> make_node_map_tri(int p)
+{
+  const int nodes1D = p + 1;
+  Kokkos::View<int**> node_map("node_map", nodes1D, nodes1D);
+  auto desc = ElementDescription::create(2, p, stk::topology::TRI_3_2D);
+  int nodeCount = 0;
+    for (int j = 0; j < nodes1D; ++j) {
+      for (int i = 0; i < nodes1D-j; ++i) {
+        node_map(j,i) = desc->nodeMap.at(nodeCount);
+        nodeCount++;
       }
     }
   return node_map;
@@ -74,7 +90,7 @@ Kokkos::View<int***> make_face_node_map_hex(int p)
 {
   const int nodes1D = p + 1;
   Kokkos::View<int***> face_node_map("face_node_map", 6, nodes1D, nodes1D);
-  auto desc = ElementDescription::create(3, p);
+  auto desc = ElementDescription::create(3, p, stk::topology::HEX_8);
   for (int faceOrdinal = 0; faceOrdinal < 6; ++faceOrdinal) {
     for (int j = 0; j < nodes1D; ++j) {
       for (int i = 0; i < nodes1D; ++i) {
@@ -89,8 +105,21 @@ Kokkos::View<int**> make_face_node_map_quad(int p)
 {
   const int nodes1D = p + 1;
   Kokkos::View<int**> face_node_map("face_node_map", 4, nodes1D);
-  auto desc = ElementDescription::create(2, p);
+  auto desc = ElementDescription::create(2, p, stk::topology::QUAD_4_2D);
   for (int faceOrdinal = 0; faceOrdinal < 4; ++faceOrdinal) {
+    for (int i = 0; i < nodes1D; ++i) {
+      face_node_map(faceOrdinal, i) = desc->faceNodeMap[faceOrdinal][i];
+    }
+  }
+  return face_node_map;
+}
+
+Kokkos::View<int**> make_face_node_map_tri(int p)
+{
+  const int nodes1D = p + 1;
+  Kokkos::View<int**> face_node_map("face_node_map", 3, nodes1D);
+  auto desc = ElementDescription::create(2, p, stk::topology::TRI_3_2D);
+  for (int faceOrdinal = 0; faceOrdinal < 3; ++faceOrdinal) {
     for (int i = 0; i < nodes1D; ++i) {
       face_node_map(faceOrdinal, i) = desc->faceNodeMap[faceOrdinal][i];
     }
@@ -103,7 +132,7 @@ Kokkos::View<int**> make_side_node_ordinal_map_hex(int p)
 {
   const int nodes1D = p + 1;
   Kokkos::View<int**> face_node_map("side_node_ordinal_map", 6, nodes1D * nodes1D);
-  auto desc = ElementDescription::create(3, p);
+  auto desc = ElementDescription::create(3, p, stk::topology::HEX_8);
   for (int faceOrdinal = 0; faceOrdinal < 6; ++faceOrdinal) {
     for (int i = 0; i < nodes1D*nodes1D; ++i) {
       face_node_map(faceOrdinal, i) = desc->sideOrdinalMap[faceOrdinal][i];
@@ -115,8 +144,21 @@ Kokkos::View<int**> make_side_node_ordinal_map_quad(int p)
 {
   const int nodes1D = p + 1;
   Kokkos::View<int**> face_node_map("side_node_ordinal_map", 4, nodes1D);
-  auto desc = ElementDescription::create(2, p);
+  auto desc = ElementDescription::create(2, p, stk::topology::QUAD_4_2D);
   for (int faceOrdinal = 0; faceOrdinal < 4; ++faceOrdinal) {
+    for (int i = 0; i < nodes1D; ++i) {
+      face_node_map(faceOrdinal, i) = desc->sideOrdinalMap[faceOrdinal][i];
+    }
+  }
+  return face_node_map;
+}
+
+Kokkos::View<int**> make_side_node_ordinal_map_tri(int p)
+{
+  const int nodes1D = p + 1;
+  Kokkos::View<int**> face_node_map("side_node_ordinal_map", 3, nodes1D);
+  auto desc = ElementDescription::create(2, p, stk::topology::TRI_3_2D);
+  for (int faceOrdinal = 0; faceOrdinal < 3; ++faceOrdinal) {
     for (int i = 0; i < nodes1D; ++i) {
       face_node_map(faceOrdinal, i) = desc->sideOrdinalMap[faceOrdinal][i];
     }

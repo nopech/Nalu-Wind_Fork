@@ -85,7 +85,7 @@ LagrangeBasis::LagrangeBasis(
      basis1D_(nodeLocs.data(), polyOrder_),
      numNodes1D_(nodeLocs.size()),
      dim_(indicesMap[0].size()),
-     numNodes_(std::pow(nodeLocs.size(), indicesMap[0].size())),
+     numNodes_(indicesMap.size()), // numNodes_(std::pow(nodeLocs.size(), indicesMap[0].size())), does not work for triangle
      indicesMap_("index_map", indicesMap.size(), indicesMap[0].size()),
      interpWeightsAtPoint_("interp_weights_at_point", numNodes_),
      derivWeightsAtPoint_("deriv_weights_at_point", numNodes_, dim_)

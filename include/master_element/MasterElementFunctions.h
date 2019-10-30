@@ -523,7 +523,7 @@ namespace nalu {
       detj(ip) = determinant33(&jac[0][0]);
     }
   }
-
+  
 } // namespace nalu
 } // namespace Sierra
 

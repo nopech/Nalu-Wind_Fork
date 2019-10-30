@@ -9,6 +9,7 @@
 
 #include <string>
 #include <vector>
+#include <tuple>
 
 #include <Kokkos_Core.hpp>
 
@@ -20,7 +21,10 @@ enum class QuadratureRuleType {MINIMUM_GAUSS = 0, DOUBLE_GAUSS = 1};
 class TensorProductQuadratureRule
 {
 public:
-  TensorProductQuadratureRule(int polyOrder, QuadratureRuleType = QuadratureRuleType::MINIMUM_GAUSS);
+  TensorProductQuadratureRule(int polyOrder,
+                              std::pair<int, int>endPoints = std::make_pair(-1, 1),
+                              QuadratureRuleType = QuadratureRuleType::MINIMUM_GAUSS
+                             );
   ~TensorProductQuadratureRule() = default;
 
   KOKKOS_INLINE_FUNCTION

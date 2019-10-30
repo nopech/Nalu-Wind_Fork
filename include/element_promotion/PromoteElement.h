@@ -76,6 +76,14 @@ namespace internal {
     const VectorFieldType& coordField,
     const stk::mesh::PartVector& elemPartsToBePromoted,
     stk::mesh::Part& edgePart);
+  
+  std::pair<stk::mesh::PartVector, stk::mesh::PartVector>
+  promote_elements_tri(
+    stk::mesh::BulkData& bulk,
+    const ElementDescription& desc,
+    const VectorFieldType& coordField,
+    const stk::mesh::PartVector& elemPartsToBePromoted,
+    stk::mesh::Part& edgePart);
 
   std::pair<stk::mesh::PartVector, stk::mesh::PartVector>
   promote_elements_hex(
@@ -140,6 +148,12 @@ namespace internal {
     const ConnectivityMap& volumeConnectivity);
 
   void set_coordinates_quad(
+    const stk::mesh::BulkData& bulk,
+    const ElementDescription& desc,
+    const stk::mesh::PartVector& partsToBePromoted,
+    const VectorFieldType& coordField);
+  
+  void set_coordinates_tri(
     const stk::mesh::BulkData& bulk,
     const ElementDescription& desc,
     const stk::mesh::PartVector& partsToBePromoted,

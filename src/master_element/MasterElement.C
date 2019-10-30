@@ -9,7 +9,12 @@
 #include <master_element/MasterElement.h>
 #include <master_element/MasterElementFunctions.h>
 
-#include <master_element/MasterElementHO.h>
+#include <master_element/HigherOrderEdge2DSCS.h>
+#include <master_element/HigherOrderQuad2DSCS.h>
+#include <master_element/HigherOrderQuad2DSCV.h>
+#include <master_element/HigherOrderQuad3DSCS.h>
+#include <master_element/HigherOrderTri2DSCS.h>
+#include <master_element/HigherOrderTri2DSCV.h>
 #include <master_element/MasterElementUtils.h>
 
 #include <element_promotion/LagrangeBasis.h>

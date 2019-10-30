@@ -329,6 +329,17 @@ std::vector<double> pad_end_points(int n, const double* x, double xleft, double 
   return padded_x;
 }
 
+std::vector<double> pad_end_points(const Kokkos::View<double*> x, double xleft, double xright)
+{
+  std::vector<double> padded_x(x.size()+2);
+  padded_x[0] = xleft;
+  for (unsigned j = 0; j < x.size();++j) {
+    padded_x[j+1] = x[j];
+  }
+  padded_x[x.size()+1] = xright;
+
+  return padded_x;
+}
 
 }  // namespace nalu
 }  // namespace sierra

@@ -39,7 +39,9 @@ struct ElementDescription
   using SubElementConnectivity = std::vector<std::vector<ordinal_type>> ;
 public:
   static std::unique_ptr<ElementDescription> create(int dimension, int order);
+  static std::unique_ptr<ElementDescription> create(int dimension, int order, stk::topology baseTopo);
   static std::unique_ptr<ElementDescription> create(int dimension, stk::topology topo);
+  static std::map<stk::topology, stk::topology> baseTopoMap;
 
   virtual ~ElementDescription();
 

@@ -51,7 +51,6 @@
 #include <element_promotion/PromotedElementIO.h>
 #include <element_promotion/ElementDescription.h>
 #include <element_promotion/PromotedPartHelper.h>
-#include <master_element/MasterElementHO.h>
 
 // mesh motion
 #include <mesh_motion/MeshMotionAlg.h>
@@ -4400,9 +4399,15 @@ void
 Realm::setup_element_promotion()
 {
   // Create a description of the element and deal with the part naming styles
+  
+  // Get the topology of an arbitrary interior part
+  // This is a workaround
+  // TODO: Parts may have different or multiple topologies, take this into account
+  stk::mesh::Part* arbPart = metaData_->get_part(materialPropertys_.targetNames_[0]);
+  stk::topology baseTopo = metaData_->get_topology(*arbPart);
 
   // Struct containing information about the element (e.g. number of nodes, nodes per face, etc.)
-  desc_ = ElementDescription::create(meta_data().spatial_dimension(), promotionOrder_);
+  desc_ = ElementDescription::create(meta_data().spatial_dimension(), promotionOrder_, baseTopo);
 
   // Every mesh part is promoted for now
   basePartVector_ = metaData_->get_mesh_parts();
@@ -4440,6 +4445,9 @@ Realm::setup_element_promotion()
       }
       superPartVector_.push_back(superPart);
       superTargetNames_.push_back(superName);
+      
+      // Add an entry to the map so the baseTopo can be found later for a given superTopo
+      ElementDescription::baseTopoMap[superPart->topology()] = baseTopo;
 
       // Create elements for future use
       sierra::nalu::MasterElementRepo::get_surface_master_element(superPart->topology(), meta_data().spatial_dimension(), "GaussLegendre");
@@ -4464,6 +4472,9 @@ Realm::setup_element_promotion()
           stk::mesh::Part* superFacePart = &metaData_->declare_part_with_topology(partName,sideTopo);
           superPartVector_.push_back(superFacePart);
           metaData_->declare_part_subset(*superSuperset, *superFacePart);
+          
+          // Add an entry to the map so the baseTopo can be found later for a given superTopo
+          ElementDescription::baseTopoMap[sideTopo] = baseTopo;
 
           // Create elements for future use
           sierra::nalu::MasterElementRepo::get_surface_master_element(sideTopo, meta_data().spatial_dimension(), "GaussLegendre");

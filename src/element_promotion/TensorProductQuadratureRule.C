@@ -29,7 +29,9 @@ int integration_points_required(int poly, QuadratureRuleType quadType)
   return -1;
 }
 
-TensorProductQuadratureRule::TensorProductQuadratureRule(int polyOrder, QuadratureRuleType quadType)
+double isoparametric_map(double xl, double xr, double x) { return 0.5 * (x * (xr - xl) +  (xl + xr)); }
+
+TensorProductQuadratureRule::TensorProductQuadratureRule(int polyOrder, std::pair<int, int>endPoints, QuadratureRuleType quadType)
 : numQuad_(integration_points_required(polyOrder, quadType)),
   scsLoc_("scs_locations", polyOrder),
   scsEndLoc_("scs_locations_with_end_points", polyOrder + 2),
@@ -40,10 +42,11 @@ TensorProductQuadratureRule::TensorProductQuadratureRule(int polyOrder, Quadratu
 
   auto scsLoc = gauss_legendre_rule(polyOrder).first;
   for (int k = 0; k < polyOrder; ++k) {
-    scsLoc_[k] = scsLoc[k];
+    scsLoc_[k] = isoparametric_map(endPoints.first, endPoints.second, scsLoc[k]);
+//    std::cout << "scsLoc_[" << k << "] = " << scsLoc_[k] << std::endl;
   }
 
-  auto scsEndLoc = pad_end_points(scsLoc, -1, +1);
+  auto scsEndLoc = pad_end_points(scsLoc_, endPoints.first, endPoints.second); // results in the same as lobatto
   for (int k = 0; k < polyOrder + 2; ++k) {
     scsEndLoc_[k] = scsEndLoc[k];
   }
@@ -51,16 +54,15 @@ TensorProductQuadratureRule::TensorProductQuadratureRule(int polyOrder, Quadratu
   std::vector<double> abscissae;
   std::vector<double> weights;
   std::tie(abscissae, weights) = gauss_legendre_rule(numQuad_);
+//  const int isoParametricLength = endPoints.second - endPoints.first;
+//  const double isoParametricFactor = 1.0 / isoParametricLength;
   const double isoParametricFactor = 0.5;
 
   for (int k = 0; k < numQuad_; ++k) {
     abscissae_[k] = abscissae[k];
     weights_[k] = isoParametricFactor * weights[k];
   }
-
 }
-
-double isoparametric_map(double xl, double xr, double x) { return 0.5 * (x * (xr - xl) +  (xl + xr)); }
 
 double TensorProductQuadratureRule::integration_point_location(int nodeOrd, int ipOrd) const
 {
@@ -70,6 +72,7 @@ double TensorProductQuadratureRule::integration_point_location(int nodeOrd, int 
 double TensorProductQuadratureRule::integration_point_weight(int s1Node, int s1Ip) const
 {
   const double Ls1 = (scsEndLoc_[s1Node + 1] - scsEndLoc_[s1Node]) * weights_[s1Ip];
+  std::cout << "scsEndLoc_[s1Node + 1] - scsEndLoc_[s1Node]) * weights_[s1Ip]: " << "(" << scsEndLoc_[s1Node + 1] << " - " << scsEndLoc_[s1Node] << ")" << " * " << weights_[s1Ip] << std::endl;
   const double weightedIsoparametricLength = Ls1;
   return weightedIsoparametricLength;
 }

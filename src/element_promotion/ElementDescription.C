@@ -8,9 +8,11 @@
 #include <element_promotion/ElementDescription.h>
 
 #include <element_promotion/QuadNElementDescription.h>
+#include <element_promotion/TriNElementDescription.h>
 #include <element_promotion/HexNElementDescription.h>
 #include <element_promotion/QuadratureRule.h>
 #include <nalu_make_unique.h>
+#include "NaluEnv.h"
 
 #include <cmath>
 
@@ -18,6 +20,8 @@
 
 namespace sierra {
 namespace nalu {
+  
+std::map<stk::topology, stk::topology> ElementDescription::baseTopoMap;
 
 int poly_order_from_topology(int dimension, stk::topology topo)
 {
@@ -45,9 +49,23 @@ int poly_order_from_topology(int dimension, stk::topology topo)
     int nodes1D = std::sqrt(topo.num_nodes()+1);
     return (nodes1D-1);
   }
-
-  const int nodes1D = (dimension == 2) ? std::sqrt(topo.num_nodes()+1) : std::cbrt(topo.num_nodes()+1);
-
+  
+  int nodes1D = -1;
+  stk::topology baseTopo = ElementDescription::baseTopoMap[topo];
+  
+  if (baseTopo == stk::topology::QUAD_4_2D) {
+    nodes1D = std::sqrt(topo.num_nodes()+1);
+  } 
+  else if (baseTopo == stk::topology::TRI_3_2D) {
+    nodes1D = 0.5*( std::sqrt(8*topo.num_nodes()+1) - 1 ); // Triangular number solved for n
+  } 
+  else if (baseTopo == stk::topology::HEX_8) {
+    nodes1D = std::cbrt(topo.num_nodes()+1);
+  }
+  else {
+    ThrowErrorMsg("Topology not known to function poly_order_from_topology()");
+  }
+  
   const int polynomial_order = nodes1D-1;
   return polynomial_order;
 }
@@ -56,10 +74,47 @@ std::unique_ptr<ElementDescription>
 ElementDescription::create(int dimension, stk::topology superTopo)
 {
   ThrowRequireMsg(superTopo.is_super_topology(), "Only valid for super topologies");
-  return ElementDescription::create(dimension, poly_order_from_topology(dimension, superTopo));
+  
+  // Find the baseTopo of the given superTopo
+  stk::topology baseTopo = baseTopoMap[superTopo];
+  
+  NaluEnv::self().naluOutputP0() << "supertopo has basetopo " << baseTopo << std::endl;
+  return ElementDescription::create(dimension, poly_order_from_topology(dimension, superTopo), baseTopo);
 }
 
 //--------------------------------------------------------------------------
+std::unique_ptr<ElementDescription>
+ElementDescription::create(int dimension, int order, stk::topology topo)
+{
+  auto nodeLocations1D = gauss_lobatto_legendre_rule(order + 1).first;
+  
+  if ( topo.base() == stk::topology::QUAD_4_2D ) {
+    ThrowRequireMsg(dimension == 2, "Dimension doesn't match topology QUAD_4_2D");
+    NaluEnv::self().naluOutputP0() << "basetopo is QUAD_4_2D" << std::endl;
+    
+    return make_unique<QuadNElementDescription>(nodeLocations1D);
+  }
+  
+  else if ( topo.base() == stk::topology::TRI_3_2D ) {
+    ThrowRequireMsg(dimension == 2, "Dimension doesn't match topology TRI_3_2D");
+    NaluEnv::self().naluOutputP0() << "basetopo is TRI_3_2D" << std::endl;
+    
+    return make_unique<TriNElementDescription>(nodeLocations1D);
+  }
+  
+  else if ( topo.base() == stk::topology::HEX_8 ) {
+    ThrowRequireMsg(dimension == 3, "Dimension doesn't match topology HEX_8");
+    NaluEnv::self().naluOutputP0() << "basetopo is HEX_8" << std::endl;
+    
+    return make_unique<HexNElementDescription>(nodeLocations1D);
+  }
+  
+  else {
+    ThrowErrorMsg("basetopo is unknown");
+  }
+  return nullptr;
+}
+
 std::unique_ptr<ElementDescription>
 ElementDescription::create(int dimension, int order)
 {

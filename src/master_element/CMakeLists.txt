@@ -6,12 +6,18 @@ add_sources(GlobalSourceList
    CalculatePolyhedralVolume.F
    CalculateQuadArea.F
    HexPCVFEM.C
+   HigherOrderEdge2DSCS.C
+   HigherOrderMasterElementFunctions.C
+   HigherOrderQuad2DSCS.C
+   HigherOrderQuad2DSCV.C
+   HigherOrderQuad3DSCS.C
+   HigherOrderTri2DSCS.C
+   HigherOrderTri2DSCV.C
    Hex27CVFEM.C
    Hex8CVFEM.C
    Hex8FEM.C
    MasterElement.C
    MasterElementFactory.C
-   MasterElementHO.C
    MasterElementUtils.C
    MasterElementWork.F
    Pyr5CVFEM.C

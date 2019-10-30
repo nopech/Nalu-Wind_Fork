@@ -3,6 +3,7 @@ add_sources(GlobalSourceList
    Actuator.C
    Algorithm.C
    AlgorithmDriver.C
+   AlgorithmElementInterface.C
    AssembleContinuityEdgeOpenSolverAlgorithm.C
    AssembleContinuityElemOpenSolverAlgorithm.C
    AssembleContinuityElemSolverAlgorithm.C
@@ -45,6 +46,7 @@ add_sources(GlobalSourceList
    AssembleScalarEdgeOpenSolverAlgorithm.C
    AssembleScalarEigenEdgeSolverAlgorithm.C
    AssembleScalarElemDiffSolverAlgorithm.C
+   AssembleScalarElemDiffSolverAlgorithmTidy.C
    AssembleScalarElemOpenSolverAlgorithm.C
    AssembleScalarElemSolverAlgorithm.C
    AssembleScalarFluxBCSolverAlgorithm.C
@@ -53,6 +55,7 @@ add_sources(GlobalSourceList
    AuxFunctionAlgorithm.C
    AveragingInfo.C
    BoundaryConditions.C
+   cfdVector.C
    ComputeABLWallFrictionVelocityAlgorithm.C
    ComputeGeometryAlgorithmDriver.C
    ComputeGeometryBoundaryAlgorithm.C

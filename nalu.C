@@ -14,6 +14,7 @@
 #include <Simulation.h>
 #include <NaluEnv.h>
 #include <NaluVersionInfo.h>
+#include <element_promotion/ElementDescription.h>
 
 // util
 #include <stk_util/environment/perf_util.hpp>

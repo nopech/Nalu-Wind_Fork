@@ -11,6 +11,7 @@
 #include <master_element/Hex8CVFEM.h>
 #include <master_element/MasterElement.h>
 #include <master_element/Quad42DCVFEM.h>  
+#include <master_element/Tri32DCVFEM.h>
 #include <NaluEnv.h>
 #include <BucketLoop.h>
 
@@ -57,13 +58,28 @@ promote_elements(
   stk::mesh::Part* facePart)
 {
   // only quads and hexs implemented
-
-  if (desc.dimension == 2) {
+  std::pair<stk::mesh::PartVector, stk::mesh::PartVector> value;
+  
+  if (desc.baseTopo == stk::topology::QUAD_4_2D) {
     ThrowRequire(edgePart != nullptr);
-    return internal::promote_elements_quad(bulk, desc, coordField, partsToBePromoted, *edgePart);
+    value = internal::promote_elements_quad(bulk, desc, coordField, partsToBePromoted, *edgePart);
   }
-  ThrowRequire(facePart != nullptr);
-  return internal::promote_elements_hex(bulk, desc, coordField, partsToBePromoted, *edgePart, *facePart);
+  
+  else if (desc.baseTopo == stk::topology::TRI_3_2D) {
+    ThrowRequire(edgePart != nullptr);
+    value = internal::promote_elements_tri(bulk, desc, coordField, partsToBePromoted, *edgePart);
+  }
+  
+  else if (desc.baseTopo == stk::topology::HEX_8) {
+    ThrowRequire(facePart != nullptr);
+    value = internal::promote_elements_hex(bulk, desc, coordField, partsToBePromoted, *edgePart, *facePart);
+  }
+  
+  else {
+    ThrowErrorMsg("Topology not implemented for promotion");
+  }
+  
+  return value;
 }
 
 stk::mesh::PartVector
@@ -127,6 +143,52 @@ promote_elements_quad(
   stk::mesh::PartVector promotedSideParts = create_boundary_elements(bulk, desc, partsToBePromoted);
 
   set_coordinates_quad(bulk, desc, promotedElemParts, coordField);
+
+  return std::make_pair(promotedElemParts, promotedSideParts);
+}
+//--------------------------------------------------------------------------
+std::pair<stk::mesh::PartVector, stk::mesh::PartVector>
+promote_elements_tri(
+  stk::mesh::BulkData& bulk,
+  const ElementDescription& desc,
+  const VectorFieldType& coordField,
+  const stk::mesh::PartVector& partsToBePromoted,
+  stk::mesh::Part& edgePart)
+{
+  ThrowRequire(check_parts_for_promotion(partsToBePromoted));
+  ThrowRequireMsg(!bulk.is_automatic_aura_on(), "Promotion not yet tested for automatic aura");
+  ThrowRequire(desc.baseTopo == stk::topology::TRI_3_2D);
+
+  stk::mesh::Selector edgeSelector = edgePart | stk::mesh::selectUnion(base_edge_parts(partsToBePromoted));
+  stk::mesh::Selector volSelector = stk::mesh::selectUnion(base_elem_parts(partsToBePromoted));
+
+  stk::mesh::create_edges(bulk, volSelector, &edgePart);
+
+  bulk.modification_begin();
+
+  ConnectivityMap edgeNodeMap = connectivity_map_for_parent_rank(
+    bulk,
+    desc.newNodesPerEdge,
+    edgeSelector,
+    stk::topology::EDGE_RANK
+  );
+
+  ConnectivityMap volNodeMap = connectivity_map_for_parent_rank(
+    bulk,
+    desc.newNodesPerVolume,
+    volSelector,
+    stk::topology::ELEM_RANK
+  );
+
+  stk::mesh::PartVector promotedElemParts
+     = create_super_elements(bulk, desc, partsToBePromoted, edgeNodeMap, volNodeMap);
+
+  destroy_entities(bulk, edgePart, stk::topology::EDGE_RANK);
+  bulk.modification_end();
+
+  stk::mesh::PartVector promotedSideParts = create_boundary_elements(bulk, desc, partsToBePromoted);
+
+  set_coordinates_tri(bulk, desc, promotedElemParts, coordField);
 
   return std::make_pair(promotedElemParts, promotedSideParts);
 }
@@ -684,6 +746,43 @@ set_coordinates_quad(
     for (int ord : desc.promotedNodeOrdinals) {
       const auto& isoParCoords = desc.nodeLocs.at(ord);
       meQuad.interpolatePoint(desc.dimension, isoParCoords.data(), baseCoords.data(), physCoords.data());
+      double* coords = stk::mesh::field_data(coordField, node_rels[ord]);
+      for (int d = 0; d < desc.dimension; ++d) {
+        coords[d] = physCoords[d];
+      }
+    }
+  });
+}
+//--------------------------------------------------------------------------
+void
+set_coordinates_tri(
+  const stk::mesh::BulkData& bulk,
+  const ElementDescription& desc,
+  const stk::mesh::PartVector& promotedPartVector,
+  const VectorFieldType& coordField)
+{
+  Tri32DSCS meTri;
+  auto selector = stk::mesh::selectUnion(promotedPartVector);
+  const auto& elem_buckets = bulk.get_buckets(stk::topology::ELEM_RANK, selector);
+
+  int baseNodes = desc.nodesInBaseElement;
+  std::vector<double> baseCoords(baseNodes*desc.dimension);
+  std::vector<double> physCoords(desc.dimension);
+
+  bucket_loop(elem_buckets, [&](const stk::mesh::Entity elem) {
+    ThrowAssert(desc.nodesPerElement == static_cast<int>(bulk.num_nodes(elem)));
+    const stk::mesh::Entity* node_rels = bulk.begin_nodes(elem);
+
+    for (int ord : desc.baseNodeOrdinals) {
+      double* coords = stk::mesh::field_data(coordField, node_rels[ord]);
+      for (int d = 0; d < desc.dimension; ++d) {
+        baseCoords[d * 3 + ord] = coords[d];
+      }
+    }
+
+    for (int ord : desc.promotedNodeOrdinals) {
+      const auto& isoParCoords = desc.nodeLocs.at(ord);
+      meTri.interpolatePoint(desc.dimension, isoParCoords.data(), baseCoords.data(), physCoords.data());
       double* coords = stk::mesh::field_data(coordField, node_rels[ord]);
       for (int d = 0; d < desc.dimension; ++d) {
         coords[d] = physCoords[d];

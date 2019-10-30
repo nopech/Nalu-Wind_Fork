@@ -22,6 +22,7 @@ option(ENABLE_TIOGA "Use TIOGA TPL to perform overset connectivity" OFF)
 option(ENABLE_ALL_WARNINGS "Show most warnings for most compilers" ON)
 option(ENABLE_WERROR "Warnings are errors" OFF)
 option(ENABLE_OPENMP "Enable OpenMP flags" OFF)
+option(ENABLE_UNITTEST "Also build the unittests" OFF)
 
 set(CMAKE_CXX_STANDARD 11)       # Set nalu-wind C++11 standard
 set(CMAKE_CXX_EXTENSIONS OFF)    # Do not enable GNU extensions
@@ -289,18 +290,20 @@ if(MPI_LINK_FLAGS)
     LINK_FLAGS "${MPI_LINK_FLAGS}")
 endif(MPI_LINK_FLAGS)
 
-set(utest_ex_name "unittestX")
-add_executable(${utest_ex_name} unit_tests.C ${NALU_UNIT_SOURCES})
-target_link_libraries(${utest_ex_name} nalu)
-target_include_directories(${utest_ex_name} PUBLIC "${CMAKE_SOURCE_DIR}/unit_tests")
-if(MPI_COMPILE_FLAGS)
-  set_target_properties(${utest_ex_name} PROPERTIES
-    COMPILE_FLAGS "${MPI_COMPILE_FLAGS}")
-endif(MPI_COMPILE_FLAGS)
-if(MPI_LINK_FLAGS)
-  set_target_properties(${utest_ex_name} PROPERTIES
-    LINK_FLAGS "${MPI_LINK_FLAGS}")
-endif(MPI_LINK_FLAGS)
+if(ENABLE_UNITTEST)
+  set(utest_ex_name "unittestX")
+  add_executable(${utest_ex_name} unit_tests.C ${NALU_UNIT_SOURCES})
+  target_link_libraries(${utest_ex_name} nalu)
+  target_include_directories(${utest_ex_name} PUBLIC "${CMAKE_SOURCE_DIR}/unit_tests")
+  if(MPI_COMPILE_FLAGS)
+    set_target_properties(${utest_ex_name} PROPERTIES
+      COMPILE_FLAGS "${MPI_COMPILE_FLAGS}")
+  endif(MPI_COMPILE_FLAGS)
+  if(MPI_LINK_FLAGS)
+    set_target_properties(${utest_ex_name} PROPERTIES
+      LINK_FLAGS "${MPI_LINK_FLAGS}")
+  endif(MPI_LINK_FLAGS)
+endif()
 
 set(nalu_ex_catalyst_name "naluXCatalyst")
 if(ENABLE_PARAVIEW_CATALYST)

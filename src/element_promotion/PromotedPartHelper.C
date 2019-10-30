@@ -27,15 +27,32 @@ namespace nalu{
   //--------------------------------------------------------------------------
   bool check_part_topo(const stk::mesh::Part& part) {
     const int dim = part.mesh_meta_data().spatial_dimension();
-    bool is_valid_elem_rank = false;
     const stk::topology topo = part.topology();
+    
+    bool is_valid_elem_rank = false;
     if (topo.rank() == stk::topology::ELEM_RANK) {
-      is_valid_elem_rank = (dim == 2) ? topo == stk::topology::QUAD_4_2D : topo == stk::topology::HEX_8;
+      if (topo == stk::topology::QUAD_4_2D) {
+        is_valid_elem_rank = true;
+      }
+      else if (topo == stk::topology::TRI_3_2D) {
+        is_valid_elem_rank = true;
+      }
+      else if (topo == stk::topology::HEX_8) {
+        is_valid_elem_rank = true;
+      }
     }
 
     bool is_valid_side_rank = false;
     if (topo.rank() == part.mesh_meta_data().side_rank()) {
-      is_valid_side_rank = (dim == 2) ? topo == stk::topology::LINE_2 : topo == stk::topology::QUAD_4;
+      if (topo == stk::topology::QUAD_4_2D) {
+        is_valid_side_rank = true;
+      }
+      else if (topo == stk::topology::TRI_3_2D) {
+        is_valid_side_rank = true;
+      }
+      else if (topo == stk::topology::LINE_2) {
+        is_valid_side_rank = true;
+      }
     }
 
     if (!(is_valid_side_rank || is_valid_elem_rank)) {

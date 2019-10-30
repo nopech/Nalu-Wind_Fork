@@ -9,6 +9,7 @@
 
 #include <Realm.h>
 #include <master_element/MasterElement.h>
+#include "master_element/MasterElementFactory.h"
 
 // stk_mesh/base/fem
 #include <stk_mesh/base/BulkData.hpp>
@@ -40,12 +41,12 @@ AlgorithmElementInterface::~AlgorithmElementInterface() {
 
 void AlgorithmElementInterface::bucket_pre_work(stk::mesh::Bucket & b) {
     // extract master element
-    meSCS_ = MasterElementRepo::get_surface_master_element(b.topology());
-    meSCV_ = MasterElementRepo::get_volume_master_element(b.topology());
+    meSCS_ = sierra::nalu::MasterElementRepo::get_surface_master_element(b.topology());
+    meSCV_ = sierra::nalu::MasterElementRepo::get_volume_master_element(b.topology());
 
     // extract master element specifics
     nodesPerElement_ = meSCS_->nodesPerElement_;
-    numScsIp_ = meSCS_->numIntPoints_;
+    numScsIp_ = meSCS_->num_integration_points();
     lrscv_ = meSCS_->adjacentNodes();
 
     // resize some things; matrix related
