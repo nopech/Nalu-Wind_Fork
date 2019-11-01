@@ -243,7 +243,7 @@ AssembleScalarElemDiffSolverAlgorithm::execute()
           double lhsfacDiff = 0.0;
           const int offSetDnDx = nDim*nodesPerElement*ip + ic*nDim;
           for ( int j = 0; j < nDim; ++j ) {
-            std::cout << "node: " << ic << ", dim: " << j << ", dndx: " << p_dndx[offSetDnDx+j] << ", area_vec: " << p_scs_areav[ip*nDim+j] << std::endl;
+            std::cout << "node: " << ic << ", dim: " << j << ", dndx: " << p_dndx[offSetDnDx+j] << ", area_vec[" << ip*nDim+j << "] = "<< p_scs_areav[ip*nDim+j] << std::endl;
             lhsfacDiff += -muIp*p_dndx[offSetDnDx+j]*p_scs_areav[ip*nDim+j];
           }
 

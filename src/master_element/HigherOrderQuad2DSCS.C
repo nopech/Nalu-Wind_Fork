@@ -370,6 +370,10 @@ HigherOrderQuad2DSCS::determinant(
     double weight = ipWeights_(ip);
     areav[ip * dim + 0] *= weight;
     areav[ip * dim + 1] *= weight;
+    
+    std::cout << "IP: " << ip+1 << std::endl;
+    std::cout << "areav_x: " << areav[ip * dim + 0] << std::endl;
+    std::cout << "areav_y: " << areav[ip * dim + 1] << std::endl;
   }
 }
 

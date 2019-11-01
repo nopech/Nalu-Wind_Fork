@@ -149,7 +149,9 @@ private:
   Kokkos::View<int*> oppNode_;
   Kokkos::View<int*> oppFace_;
   Kokkos::View<double**> intgExpFace_;
-  Kokkos::View<double***>  intSubfaces_;
+  Kokkos::View<double***>  intSubfaces_; // internal subfaces, defined with 2 points B and P
+    Kokkos::View<double**> realCoords;
+  Kokkos::View<double**> isoParCoords;
 };
 
 } // namespace nalu
