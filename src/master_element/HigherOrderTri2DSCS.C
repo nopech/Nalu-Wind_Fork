@@ -154,15 +154,14 @@ HigherOrderTri2DSCS::set_interior_info()
     
     for (int j = 0; j < numQuad; ++j) {
       const double abscissa = quadrature_.abscissa(j);
-      const double length = std::sqrt(pow(P[0]-B[0], 2) + pow(P[1]-B[1], 2));
-      ipWeights_(count) = orientation * quadrature_.weights(j) * length;
-      std::cout << "ipWeights_(" << count << ") = " << ipWeights_(count) << std::endl;
+      ipWeights_(count) = orientation * quadrature_.weights(j);
+//      std::cout << "ipWeights_(" << count << ") = " << ipWeights_(count) << std::endl;
       lrscv_(2*count) = left;
       lrscv_(2*count+1) = right;
-      std::cout << "left node: " << lrscv_(2*count) << ", right node: " << lrscv_(2*count+1) << std::endl;
+//      std::cout << "left node: " << lrscv_(2*count) << ", right node: " << lrscv_(2*count+1) << std::endl;
       for (int i = 0; i < 2; ++i) {
         intgLoc_(count, i) = B[i] + 0.5 * ( abscissa + 1) * (P[i] - B[i] );
-        std::cout << "intgLoc_(" << count << ", " << i << ") = " << intgLoc_(count, i) << std::endl;
+//        std::cout << "intgLoc_(" << count << ", " << i << ") = " << intgLoc_(count, i) << std::endl;
       }
       count++;
     }
@@ -200,7 +199,7 @@ HigherOrderTri2DSCS::set_interior_info()
     // left edge face endloc
     endLoc[0] = 0.0;
     endLoc[1] = quadrature_.scs_end_loc(1);
-    orientation = 1;
+    orientation = -1;
     writeIPInfo(subTriCentroid, endLoc, IPCount, subfaceCount, subTriNodeOrdinals[0], subTriNodeOrdinals[2], orientation);
   }
   else if (polyOrder == 2) {
@@ -225,16 +224,19 @@ HigherOrderTri2DSCS::set_interior_info()
     // bottom edge face endloc
     endLoc[0] = quadrature_.scs_end_loc(1);
     endLoc[1] = 0.0;
+    orientation = 1;
     writeIPInfo(subTriCentroid, endLoc, IPCount, subfaceCount, subTriNodeOrdinals[0], subTriNodeOrdinals[1], orientation);
     
     // right neighbor subtriangle
     neighborSubTriNodeOrdinals = {3, 4, 5};
     endLoc = getCentroid(neighborSubTriNodeOrdinals);
+    orientation = 1;
     writeIPInfo(subTriCentroid, endLoc, IPCount, subfaceCount, subTriNodeOrdinals[1], subTriNodeOrdinals[2], orientation);
     
     // left edge face endloc
     endLoc[0] = 0.0;
     endLoc[1] = quadrature_.scs_end_loc(1);
+    orientation = -1;
     writeIPInfo(subTriCentroid, endLoc, IPCount, subfaceCount, subTriNodeOrdinals[0], subTriNodeOrdinals[2], orientation);
     
     //----------------------------------------------------------------
@@ -247,16 +249,19 @@ HigherOrderTri2DSCS::set_interior_info()
     // bottom edge face endloc
     endLoc[0] = quadrature_.scs_end_loc(2);
     endLoc[1] = 0.0;
+    orientation = -1;
     writeIPInfo(subTriCentroid, endLoc, IPCount, subfaceCount, subTriNodeOrdinals[1], subTriNodeOrdinals[0], orientation);
     
     // right edge face endloc
     endLoc[0] = quadrature_.scs_end_loc(2);
     endLoc[1] = quadrature_.scs_end_loc(1);
+    orientation = 1;
     writeIPInfo(subTriCentroid, endLoc, IPCount, subfaceCount, subTriNodeOrdinals[1], subTriNodeOrdinals[2], orientation);
     
     // left neighbor subtriangle
     neighborSubTriNodeOrdinals = {3, 4, 5};
     endLoc = getCentroid(neighborSubTriNodeOrdinals);
+    orientation = -1;
     writeIPInfo(subTriCentroid, endLoc, IPCount, subfaceCount, subTriNodeOrdinals[0], subTriNodeOrdinals[2], orientation);
     
     //----------------------------------------------------------------
@@ -269,16 +274,19 @@ HigherOrderTri2DSCS::set_interior_info()
     // bottom neighbor subtriangle
     neighborSubTriNodeOrdinals = {3, 4, 5};
     endLoc = getCentroid(neighborSubTriNodeOrdinals);
+    orientation = -1;
     writeIPInfo(subTriCentroid, endLoc, IPCount, subfaceCount, subTriNodeOrdinals[1], subTriNodeOrdinals[0], orientation);
     
     // right edge face endloc
     endLoc[0] = quadrature_.scs_end_loc(1);
     endLoc[1] = quadrature_.scs_end_loc(2);
+    orientation = -1;
     writeIPInfo(subTriCentroid, endLoc, IPCount, subfaceCount, subTriNodeOrdinals[2], subTriNodeOrdinals[1], orientation);
     
     // left edge face endloc
     endLoc[0] = 0.0;
     endLoc[1] = quadrature_.scs_end_loc(2);
+    orientation = 1;
     writeIPInfo(subTriCentroid, endLoc, IPCount, subfaceCount, subTriNodeOrdinals[2], subTriNodeOrdinals[0], orientation);
   }
   else {
@@ -312,8 +320,8 @@ HigherOrderTri2DSCS::set_boundary_info()
   for (int k = 0; k < nodes1D_; ++k) {
     const int nearNode = face_node_number(k,faceOrdinal);
     int oppNode = nodeMap(k, 1);
-    std::cout << "nearNode: " << nearNode << std::endl;
-    std::cout << "oppNode: " << oppNode << std::endl;
+//    std::cout << "nearNode: " << nearNode << std::endl;
+//    std::cout << "oppNode: " << oppNode << std::endl;
 
     for (int j = 0; j < quadrature_.num_quad(); ++j) {
       ipNodeMap_(scalar_index) = nearNode;
@@ -321,9 +329,9 @@ HigherOrderTri2DSCS::set_boundary_info()
 //      oppFace_(scalar_index) = oppFaceIndex + faceToLine[faceOrdinal]*ipsPerFace_; // Not sure what this is for
       
       intgExpFace_(scalar_index, 0) = quadrature_.integration_point_location(k,j);
-      std::cout << "intgExpFace_(" << scalar_index << ", " << 0 << ") = " << intgExpFace_(scalar_index, 0) << std::endl;
+//      std::cout << "intgExpFace_(" << scalar_index << ", " << 0 << ") = " << intgExpFace_(scalar_index, 0) << std::endl;
       intgExpFace_(scalar_index, 1) = 0.0;
-      std::cout << "intgExpFace_(" << scalar_index << ", " << 1 << ") = " << intgExpFace_(scalar_index, 1) << std::endl;
+//      std::cout << "intgExpFace_(" << scalar_index << ", " << 1 << ") = " << intgExpFace_(scalar_index, 1) << std::endl;
 
       ++scalar_index;
       ++oppFaceIndex;
@@ -335,8 +343,8 @@ HigherOrderTri2DSCS::set_boundary_info()
   for (int k = 0; k < nodes1D_; ++k) {
     const int nearNode = face_node_number(k,faceOrdinal);
     int oppNode = nodeMap(k, nodes1D_-2);
-    std::cout << "nearNode: " << nearNode << std::endl;
-    std::cout << "oppNode: " << oppNode << std::endl;
+//    std::cout << "nearNode: " << nearNode << std::endl;
+//    std::cout << "oppNode: " << oppNode << std::endl;
 
     for (int j = 0; j < quadrature_.num_quad(); ++j) {
       ipNodeMap_(scalar_index) = nearNode;
@@ -344,9 +352,9 @@ HigherOrderTri2DSCS::set_boundary_info()
 //      oppFace_(scalar_index) = oppFaceIndex + faceToLine[faceOrdinal]*ipsPerFace_; // Not sure what this is for
 
       intgExpFace_(scalar_index, 0) = quadrature_.integration_point_location(k,j);
-      std::cout << "intgExpFace_(" << scalar_index << ", " << 0 << ") = " << intgExpFace_(scalar_index, 0) << std::endl;
+//      std::cout << "intgExpFace_(" << scalar_index << ", " << 0 << ") = " << intgExpFace_(scalar_index, 0) << std::endl;
       intgExpFace_(scalar_index, 1) = 1.0 - quadrature_.integration_point_location(k,j);
-      std::cout << "intgExpFace_(" << scalar_index << ", " << 1 << ") = " << intgExpFace_(scalar_index, 1) << std::endl;
+//      std::cout << "intgExpFace_(" << scalar_index << ", " << 1 << ") = " << intgExpFace_(scalar_index, 1) << std::endl;
 
       ++scalar_index;
       ++oppFaceIndex;
@@ -360,8 +368,8 @@ HigherOrderTri2DSCS::set_boundary_info()
   for (int k = elemNodeM1; k >= 0; --k) {
     const int nearNode = face_node_number(nodes1D_-k-1,faceOrdinal);
     int oppNode = nodeMap(k,1);
-    std::cout << "nearNode: " << nearNode << std::endl;
-    std::cout << "oppNode: " << oppNode << std::endl;
+//    std::cout << "nearNode: " << nearNode << std::endl;
+//    std::cout << "oppNode: " << oppNode << std::endl;
     
     for (int j = quadrature_.num_quad()-1; j >= 0; --j) {
       ipNodeMap_(scalar_index) = nearNode;
@@ -369,9 +377,9 @@ HigherOrderTri2DSCS::set_boundary_info()
 //      oppFace_(scalar_index) = (ipsPerFace_-1) - oppFaceIndex + faceToLine[faceOrdinal]*ipsPerFace_; // Not sure what this is for
 
       intgExpFace_(scalar_index, 0) = 0.0;
-      std::cout << "intgExpFace_(" << scalar_index << ", " << 0 << ") = " << intgExpFace_(scalar_index, 0) << std::endl;
+//      std::cout << "intgExpFace_(" << scalar_index << ", " << 0 << ") = " << intgExpFace_(scalar_index, 0) << std::endl;
       intgExpFace_(scalar_index, 1) = quadrature_.integration_point_location(k,j);
-      std::cout << "intgExpFace_(" << scalar_index << ", " << 1 << ") = " << intgExpFace_(scalar_index, 1) << std::endl;
+//      std::cout << "intgExpFace_(" << scalar_index << ", " << 1 << ") = " << intgExpFace_(scalar_index, 1) << std::endl;
 
       ++scalar_index;
       ++oppFaceIndex;
@@ -498,7 +506,7 @@ HigherOrderTri2DSCS::determinant(
   // Loop through all internal faces
   int offset = 0;
   for (int face = 0; face < numSubfaces; ++face) {
-    std::cout << "face: " << face << std::endl;
+//    std::cout << "face: " << face << std::endl;
     realCoords = Kokkos::View<double[2][2]>("realCoords");
     isoParCoords = Kokkos::View<double[2][2]>("isoParCoords");
     realCoords(0, 0) = 0.0;
@@ -529,9 +537,7 @@ HigherOrderTri2DSCS::determinant(
     for (int i = 0; i < 2; ++i) {
       for (int j = 0; j < nodesPerElement_; ++j) {
         realCoords(i, 0) += (shape_fcn[count] * coords[j * nDim_ + 0]);
-        std::cout << "realCoords(" << i << ", 0) += " << "shape_fcn[" << count << "] * coords[" << j << " * " << nDim_ << " + 0]" << std::endl;
         realCoords(i, 1) += (shape_fcn[count] * coords[j * nDim_ + 1]);
-        std::cout << "realCoords(" << i << ", 1) += " << "shape_fcn[" << count << "] * coords[" << j << " * " << nDim_ << " + 1]" << std::endl;
         count++;
       }
     }
@@ -540,7 +546,7 @@ HigherOrderTri2DSCS::determinant(
     const double By = realCoords(0, 1);
     const double Px = realCoords(1, 0);
     const double Py = realCoords(1, 1);
-    std::cout << "Bx = " << Bx << ", By = " << By << ", Px = " << Px << ", Py = " << Py << std::endl;
+//    std::cout << "Bx = " << Bx << ", By = " << By << ", Px = " << Px << ", Py = " << Py << std::endl;
 
     const double dx = Px - Bx;
     const double dy = Py - By;
@@ -548,12 +554,9 @@ HigherOrderTri2DSCS::determinant(
     // Loop through all IPs of the current subface
     for (int ip = 0; ip < ipsPerSubface; ++ip) {
       const double weight = ipWeights_(offset + ip);
-      std::cout << "ipWeights_(" << offset+ip << ") = " << weight << std::endl;
       
       areav[(offset + ip) * nDim_ + 0] =  dy * weight;
-      std::cout << "areav[" << (offset + ip) * nDim_ + 0 << "] = " << dy * weight << std::endl;
       areav[(offset + ip) * nDim_ + 1] = -dx * weight;
-      std::cout << "areav[" << (offset + ip) * nDim_ + 1 << "] = " << -dx * weight << std::endl;
     }
     offset += ipsPerSubface;
   }

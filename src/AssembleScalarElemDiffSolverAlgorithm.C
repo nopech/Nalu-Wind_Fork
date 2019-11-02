@@ -191,7 +191,7 @@ AssembleScalarElemDiffSolverAlgorithm::execute()
         // pointers to real data
         const double * coords = stk::mesh::field_data(*coordinates_, node );
         
-        std::cout << "Node " << ni+1 << ", Coords: " << coords[0] << " " << coords[1] << std::endl;
+//        std::cout << "Node " << ni+1 << ", Coords: " << coords[0] << " " << coords[1] << std::endl;
 
         // gather scalars
         p_scalarQNp1[ni]    = *stk::mesh::field_data(scalarQNp1, node );
@@ -214,7 +214,7 @@ AssembleScalarElemDiffSolverAlgorithm::execute()
       else
         meSCS->grad_op(1, &ws_coordinates[0], &ws_dndx[0], &ws_deriv[0], &ws_det_j[0], &scs_error);
       
-      std::cout << "Iterating through IPs:" << std::endl;
+//      std::cout << "Iterating through IPs:" << std::endl;
 
       for ( int ip = 0; ip < numScsIp; ++ip ) {
 
@@ -222,7 +222,7 @@ AssembleScalarElemDiffSolverAlgorithm::execute()
         const int il = lrscv[2*ip];
         const int ir = lrscv[2*ip+1];
         
-        std::cout << "IP: " << ip+1 << ", il: " << il+1 << ", ir: " << ir+1 << std::endl;
+//        std::cout << "IP: " << ip+1 << ", il: " << il+1 << ", ir: " << ir+1 << std::endl;
 
         // corresponding matrix rows
         const int rowL = il*nodesPerElement;
@@ -243,7 +243,7 @@ AssembleScalarElemDiffSolverAlgorithm::execute()
           double lhsfacDiff = 0.0;
           const int offSetDnDx = nDim*nodesPerElement*ip + ic*nDim;
           for ( int j = 0; j < nDim; ++j ) {
-            std::cout << "node: " << ic << ", dim: " << j << ", dndx: " << p_dndx[offSetDnDx+j] << ", area_vec[" << ip*nDim+j << "] = "<< p_scs_areav[ip*nDim+j] << std::endl;
+//            std::cout << "node: " << ic << ", dim: " << j << ", dndx: " << p_dndx[offSetDnDx+j] << ", area_vec[" << ip*nDim+j << "] = "<< p_scs_areav[ip*nDim+j] << std::endl;
             lhsfacDiff += -muIp*p_dndx[offSetDnDx+j]*p_scs_areav[ip*nDim+j];
           }
 
