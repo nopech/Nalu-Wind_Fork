@@ -151,5 +151,26 @@ double parametric_distance_quad(const double* x)
   return (absXi > absEta) ? absXi : absEta;
 }
 
+double parametric_distance_hex(const double* x)
+{
+  std::array<double, 3> y;
+  for (int i=0; i<3; ++i) {
+    y[i] = std::fabs(x[i]);
+  }
+
+  double d = 0;
+  for (int i=0; i<3; ++i) {
+    if (d < y[i]) {
+      d = y[i];
+    }
+  }
+  return d;
+}
+
+KOKKOS_FUNCTION
+int ip_per_face(const TensorProductQuadratureRule& quad, const LagrangeBasis& basis) {
+  return quad.num_quad() * quad.num_quad() * (basis.order() + 1)*(basis.order() + 1);
+}
+
 } // namespace nalu
 } // namespace Sierra

@@ -1,11 +1,13 @@
-/*------------------------------------------------------------------------*/
-/*  Copyright 2014 Sandia Corporatlion.                                   */
-/*  This software is released under the license detailed                  */
-/*  in the file, LICENSE, which is located in the top-level Nalu          */
-/*  directory structure                                                   */
-/*------------------------------------------------------------------------*/
-#include <master_element/HexPCVFEM.h>
+/* 
+ * File:   HigherOrderTetSCS.C
+ * Author: Raphael Lindegger
+ * 
+ * Created on November 2, 2019, 12:49 PM
+ */
+
+#include <master_element/HigherOrderTetSCS.h>
 #include <master_element/MasterElementFunctions.h>
+#include <master_element/HigherOrderMasterElementFunctions.h>
 #include <master_element/MasterElementUtils.h>
 #include <master_element/TensorOps.h>
 
@@ -32,233 +34,8 @@
 namespace sierra{
 namespace nalu{
 
-namespace {
-void gradient_3d(
-  int nodesPerElement,
-  const double* POINTER_RESTRICT elemNodalCoords,
-  const double* POINTER_RESTRICT shapeDeriv,
-  double* POINTER_RESTRICT grad,
-  double* POINTER_RESTRICT det_j)
-{
-  constexpr int dim = 3;
-
-  double dx_ds1 = 0.0;  double dx_ds2 = 0.0; double dx_ds3 = 0.0;
-  double dy_ds1 = 0.0;  double dy_ds2 = 0.0; double dy_ds3 = 0.0;
-  double dz_ds1 = 0.0;  double dz_ds2 = 0.0; double dz_ds3 = 0.0;
-
-  //compute Jacobian
-  int vector_offset = 0;
-  for (int node = 0; node < nodesPerElement; ++node) {
-    const double xCoord = elemNodalCoords[vector_offset + 0];
-    const double yCoord = elemNodalCoords[vector_offset + 1];
-    const double zCoord = elemNodalCoords[vector_offset + 2];
-
-    const double dn_ds1 = shapeDeriv[vector_offset + 0];
-    const double dn_ds2 = shapeDeriv[vector_offset + 1];
-    const double dn_ds3 = shapeDeriv[vector_offset + 2];
-
-    dx_ds1 += dn_ds1 * xCoord;
-    dx_ds2 += dn_ds2 * xCoord;
-    dx_ds3 += dn_ds3 * xCoord;
-
-    dy_ds1 += dn_ds1 * yCoord;
-    dy_ds2 += dn_ds2 * yCoord;
-    dy_ds3 += dn_ds3 * yCoord;
-
-    dz_ds1 += dn_ds1 * zCoord;
-    dz_ds2 += dn_ds2 * zCoord;
-    dz_ds3 += dn_ds3 * zCoord;
-
-    vector_offset += dim;
-  }
-
-  *det_j = dx_ds1 * ( dy_ds2 * dz_ds3 - dz_ds2 * dy_ds3 )
-         + dy_ds1 * ( dz_ds2 * dx_ds3 - dx_ds2 * dz_ds3 )
-         + dz_ds1 * ( dx_ds2 * dy_ds3 - dy_ds2 * dx_ds3 );
-
-  const double inv_det_j = 1.0 / (*det_j);
-
-  const double ds1_dx = inv_det_j*(dy_ds2 * dz_ds3 - dz_ds2 * dy_ds3);
-  const double ds2_dx = inv_det_j*(dz_ds1 * dy_ds3 - dy_ds1 * dz_ds3);
-  const double ds3_dx = inv_det_j*(dy_ds1 * dz_ds2 - dz_ds1 * dy_ds2);
-
-  const double ds1_dy = inv_det_j*(dz_ds2 * dx_ds3 - dx_ds2 * dz_ds3);
-  const double ds2_dy = inv_det_j*(dx_ds1 * dz_ds3 - dz_ds1 * dx_ds3);
-  const double ds3_dy = inv_det_j*(dz_ds1 * dx_ds2 - dx_ds1 * dz_ds2);
-
-  const double ds1_dz = inv_det_j*(dx_ds2 * dy_ds3 - dy_ds2 * dx_ds3);
-  const double ds2_dz = inv_det_j*(dy_ds1 * dx_ds3 - dx_ds1 * dy_ds3);
-  const double ds3_dz = inv_det_j*(dx_ds1 * dy_ds2 - dy_ds1 * dx_ds2);
-
-  // metrics
-  vector_offset = 0;
-  for (int node = 0; node < nodesPerElement; ++node) {
-    const double dn_ds1 = shapeDeriv[vector_offset + 0];
-    const double dn_ds2 = shapeDeriv[vector_offset + 1];
-    const double dn_ds3 = shapeDeriv[vector_offset + 2];
-
-    grad[vector_offset + 0] = dn_ds1 * ds1_dx + dn_ds2 * ds2_dx + dn_ds3 * ds3_dx;
-    grad[vector_offset + 1] = dn_ds1 * ds1_dy + dn_ds2 * ds2_dy + dn_ds3 * ds3_dy;
-    grad[vector_offset + 2] = dn_ds1 * ds1_dz + dn_ds2 * ds2_dz + dn_ds3 * ds3_dz;
-
-    vector_offset += dim;
-  }
-}
-}
-
 KOKKOS_FUNCTION
-HigherOrderHexSCV::HigherOrderHexSCV(
-  LagrangeBasis basis,
-  TensorProductQuadratureRule quadrature)
-  : MasterElement(),
-    nodes1D_(basis.order() + 1)
-#ifndef KOKKOS_ENABLE_CUDA
-    , nodeMap(make_node_map_hex(basis.order(), true))
-#endif
-    , basis_(std::move(basis)),
-    quadrature_(std::move(quadrature))
-{
-  MasterElement::nDim_ = 3;
-  MasterElement::nodesPerElement_ = nodes1D_ * nodes1D_ * nodes1D_;
-  MasterElement::numIntPoints_ = nodesPerElement_ * (quadrature_.num_quad() * quadrature_.num_quad() * quadrature_.num_quad());
-
-#ifndef KOKKOS_ENABLE_CUDA
-  ipNodeMap_ = Kokkos::View<int*>("ip_node_map", numIntPoints_);
-  intgLoc_ = Kokkos::View<double**>("integration_point_location", numIntPoints_, 3);
-  ipWeights_ = Kokkos::View<double*>("integration_point_weights", numIntPoints_);
-
-  int flat_index = 0;
-  for (int n = 0; n < nodes1D_; ++n) {
-    for (int m = 0; m < nodes1D_; ++m) {
-      for (int l = 0; l < nodes1D_; ++l) {
-        for (int k = 0; k < quadrature_.num_quad(); ++k) {
-          for (int j = 0; j < quadrature_.num_quad(); ++j) {
-            for (int i = 0; i < quadrature_.num_quad(); ++i) {
-              intgLoc_(flat_index, 0)= quadrature_.integration_point_location(l,i);
-              intgLoc_(flat_index, 1) = quadrature_.integration_point_location(m,j);
-              intgLoc_(flat_index, 2) = quadrature_.integration_point_location(n,k);
-              ipWeights_[flat_index] = quadrature_.integration_point_weight(l, m, n, i, j, k);
-              ipNodeMap_[flat_index] = nodeMap(n, m, l);
-              ++flat_index;
-            }
-          }
-        }
-      }
-    }
-  }
-  shapeFunctionVals_ = basis_.eval_basis_weights(intgLoc_);
-  shapeDerivs_ = basis_.eval_deriv_weights(intgLoc_);
-#endif
-}
-
-void
-HigherOrderHexSCV::shape_fcn(double *shpfc)
-{
-  int numShape = shapeFunctionVals_.size();
-  for (int j = 0; j < numShape; ++j) {
-    shpfc[j] = shapeFunctionVals_.data()[j];
-  }
-}
-
-const int* HigherOrderHexSCV::ipNodeMap(int) const { return ipNodeMap_.data(); }
-
-void HigherOrderHexSCV::determinant(
-  const int nelem,
-  const double *coords,
-  double *volume,
-  double *error)
-{
-  *error = 0.0;
-  ThrowRequireMsg(nelem == 1, "determinant is executed one element at a time for HO");
-
-  int grad_offset = 0;
-  const int grad_inc = nDim_ * nodesPerElement_;
-
-  for (int ip = 0; ip < numIntPoints_; ++ip, grad_offset += grad_inc) {
-    const double det_j = jacobian_determinant(coords,  &shapeDerivs_.data()[grad_offset]);
-    volume[ip] = ipWeights_[ip] * det_j;
-
-    if (det_j < tiny_positive_value()) {
-      *error = 1.0;
-    }
-  }
-}
-
-double HigherOrderHexSCV::jacobian_determinant(
-  const double* POINTER_RESTRICT elemNodalCoords,
-  const double* POINTER_RESTRICT shapeDerivs) const
-{
-  double dx_ds1 = 0.0;  double dx_ds2 = 0.0; double dx_ds3 = 0.0;
-  double dy_ds1 = 0.0;  double dy_ds2 = 0.0; double dy_ds3 = 0.0;
-  double dz_ds1 = 0.0;  double dz_ds2 = 0.0; double dz_ds3 = 0.0;
-  for (int node = 0; node < nodesPerElement_; ++node) {
-    const int vector_offset = nDim_ * node;
-
-    const double xCoord = elemNodalCoords[vector_offset+0];
-    const double yCoord = elemNodalCoords[vector_offset+1];
-    const double zCoord = elemNodalCoords[vector_offset+2];
-
-    const double dn_ds1 = shapeDerivs[vector_offset+0];
-    const double dn_ds2 = shapeDerivs[vector_offset+1];
-    const double dn_ds3 = shapeDerivs[vector_offset+2];
-
-    dx_ds1 += dn_ds1 * xCoord;
-    dx_ds2 += dn_ds2 * xCoord;
-    dx_ds3 += dn_ds3 * xCoord;
-
-    dy_ds1 += dn_ds1 * yCoord;
-    dy_ds2 += dn_ds2 * yCoord;
-    dy_ds3 += dn_ds3 * yCoord;
-
-    dz_ds1 += dn_ds1 * zCoord;
-    dz_ds2 += dn_ds2 * zCoord;
-    dz_ds3 += dn_ds3 * zCoord;
-  }
-
-  const double det_j = dx_ds1 * ( dy_ds2 * dz_ds3 - dz_ds2 * dy_ds3 )
-                     + dy_ds1 * ( dz_ds2 * dx_ds3 - dx_ds2 * dz_ds3 )
-                     + dz_ds1 * ( dx_ds2 * dy_ds3 - dy_ds2 * dx_ds3 );
-
-  return det_j;
-}
-
-void HigherOrderHexSCV::grad_op(
-  const int nelem,
-  const double *coords,
-  double *gradop,
-  double *deriv,
-  double *det_j,
-  double *error)
-{
-  *error = 0.0;
-  ThrowRequireMsg(nelem == 1, "Grad_op is executed one element at a time for HO");
-
-  int grad_offset = 0;
-  int grad_inc = nDim_ * nodesPerElement_;
-
-  for (int ip = 0; ip < numIntPoints_; ++ip) {
-    for (int j = 0; j < grad_inc; ++j) {
-      deriv[grad_offset + j] = shapeDerivs_.data()[grad_offset +j];
-    }
-
-    gradient_3d(nodesPerElement_, coords, &shapeDerivs_.data()[grad_offset], &gradop[grad_offset], &det_j[ip]);
-
-    if (det_j[ip] < tiny_positive_value()) {
-      *error = 1.0;
-    }
-
-    grad_offset += grad_inc;
-  }
-}
-
-
-KOKKOS_FUNCTION
-int ip_per_face(const TensorProductQuadratureRule& quad, const LagrangeBasis& basis) {
-  return quad.num_quad() * quad.num_quad() * (basis.order() + 1)*(basis.order() + 1);
-}
-
-KOKKOS_FUNCTION
-HigherOrderHexSCS::HigherOrderHexSCS(
+HigherOrderTetSCS::HigherOrderTetSCS(
   LagrangeBasis basis,
   TensorProductQuadratureRule quadrature)
 : MasterElement(),
@@ -294,7 +71,7 @@ HigherOrderHexSCS::HigherOrderHexSCS(
 }
 
 void
-HigherOrderHexSCS::set_interior_info()
+HigherOrderTetSCS::set_interior_info()
 {
   const int surfacesPerDirection = nodes1D_ - 1;
 
@@ -410,7 +187,7 @@ HigherOrderHexSCS::set_interior_info()
   }
 }
 
-int HigherOrderHexSCS::opposing_face_map(int k, int l, int i, int j, int face_index)
+int HigherOrderTetSCS::opposing_face_map(int k, int l, int i, int j, int face_index)
 {
   const int surfacesPerDirection = nodes1D_ - 1;
   const int faceToSurface[6] = {
@@ -431,7 +208,7 @@ int HigherOrderHexSCS::opposing_face_map(int k, int l, int i, int j, int face_in
 }
 
 void
-HigherOrderHexSCS::set_boundary_info()
+HigherOrderTetSCS::set_boundary_info()
 {
   const int numFaceIps = 6 * ipsPerFace_;
 
@@ -599,7 +376,7 @@ HigherOrderHexSCS::set_boundary_info()
 }
 
 void
-HigherOrderHexSCS::shape_fcn(double* shpfc)
+HigherOrderTetSCS::shape_fcn(double* shpfc)
 {
   int numShape = shapeFunctionVals_.size();
   for (int j = 0; j < numShape; ++j) {
@@ -607,24 +384,24 @@ HigherOrderHexSCS::shape_fcn(double* shpfc)
   }
 }
 
-const int* HigherOrderHexSCS::adjacentNodes()
+const int* HigherOrderTetSCS::adjacentNodes()
 {
   return &lrscv_(0,0);
 }
 
-const int* HigherOrderHexSCS::ipNodeMap(int ordinal) const
+const int* HigherOrderTetSCS::ipNodeMap(int ordinal) const
 {
   return &ipNodeMap_[ordinal*ipsPerFace_];
 }
 
 const int *
-HigherOrderHexSCS::side_node_ordinals (int ordinal) const
+HigherOrderTetSCS::side_node_ordinals (int ordinal) const
 {
   return &sideNodeOrdinals_(ordinal,0);
 }
 
 int
-HigherOrderHexSCS::opposingNodes(
+HigherOrderTetSCS::opposingNodes(
   const int ordinal,
   const int node)
 {
@@ -632,7 +409,7 @@ HigherOrderHexSCS::opposingNodes(
 }
 
 int
-HigherOrderHexSCS::opposingFace(
+HigherOrderTetSCS::opposingFace(
   const int ordinal,
   const int node)
 {
@@ -640,7 +417,7 @@ HigherOrderHexSCS::opposingFace(
 }
 
 void
-HigherOrderHexSCS::determinant(
+HigherOrderTetSCS::determinant(
   const int  /* nelem */,
   const double *coords,
   double *areav,
@@ -681,7 +458,7 @@ HigherOrderHexSCS::determinant(
 }
 
 template <Jacobian::Direction direction> void
-HigherOrderHexSCS::area_vector(
+HigherOrderTetSCS::area_vector(
   const double *POINTER_RESTRICT elemNodalCoords,
   double *POINTER_RESTRICT shapeDeriv,
   double *POINTER_RESTRICT areaVector) const
@@ -721,7 +498,7 @@ HigherOrderHexSCS::area_vector(
   areaVector[2] = dx_ds1*dy_ds2 - dy_ds1*dx_ds2;
 }
 
-void HigherOrderHexSCS::grad_op(
+void HigherOrderTetSCS::grad_op(
   const int nelem,
   const double *coords,
   double *gradop,
@@ -756,7 +533,7 @@ void HigherOrderHexSCS::grad_op(
   }
 }
 
-void HigherOrderHexSCS::face_grad_op(
+void HigherOrderTetSCS::face_grad_op(
   const int nelem,
   const int face_ordinal,
   const double *coords,
@@ -790,7 +567,7 @@ void HigherOrderHexSCS::face_grad_op(
   }
 }
 
-void HigherOrderHexSCS::gij(
+void HigherOrderTetSCS::gij(
   const double *coords,
   double *gupperij,
   double *glowerij,
@@ -803,23 +580,7 @@ void HigherOrderHexSCS::gij(
       coords, gupperij, glowerij);
 }
 
-double parametric_distance_hex(const double* x)
-{
-  std::array<double, 3> y;
-  for (int i=0; i<3; ++i) {
-    y[i] = std::fabs(x[i]);
-  }
-
-  double d = 0;
-  for (int i=0; i<3; ++i) {
-    if (d < y[i]) {
-      d = y[i];
-    }
-  }
-  return d;
-}
-
-double HigherOrderHexSCS::isInElement(
+double HigherOrderTetSCS::isInElement(
     const double *elemNodalCoord,
     const double *pointCoord,
     double *isoParCoord)
@@ -845,7 +606,7 @@ double HigherOrderHexSCS::isInElement(
   return (converged) ? parametric_distance_hex(isoParCoord) : std::numeric_limits<double>::max();
 }
 
-void HigherOrderHexSCS::interpolatePoint(
+void HigherOrderTetSCS::interpolatePoint(
   const int &nComp,
   const double *isoParCoord,
   const double *field,
@@ -871,7 +632,7 @@ template <int p> void internal_face_grad_op(
 }
 
 #ifndef KOKKOS_ENABLE_CUDA
-void HigherOrderHexSCS::face_grad_op(
+void HigherOrderTetSCS::face_grad_op(
   int face_ordinal,
   SharedMemView<DoubleType**, DeviceShmem>& coords,
   SharedMemView<DoubleType***, DeviceShmem>& gradop)
@@ -885,7 +646,7 @@ void HigherOrderHexSCS::face_grad_op(
   }
 }
 #else
-void HigherOrderHexSCS::face_grad_op(
+void HigherOrderTetSCS::face_grad_op(
   int ,
   SharedMemView<DoubleType**, DeviceShmem>& ,
   SharedMemView<DoubleType***, DeviceShmem>& )

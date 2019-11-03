@@ -10,7 +10,6 @@
 
 #include "master_element/Hex8CVFEM.h"
 #include "master_element/Hex27CVFEM.h"
-#include "master_element/HexPCVFEM.h"
 #include "master_element/Tet4CVFEM.h"
 #include "master_element/Pyr5CVFEM.h"
 #include "master_element/Wed6CVFEM.h"
@@ -26,6 +25,11 @@
 #include "master_element/HigherOrderQuad2DSCS.h"
 #include "master_element/HigherOrderQuad2DSCV.h"
 #include "master_element/HigherOrderQuad3DSCS.h"
+#include "master_element/HigherOrderTri3DSCS.h"
+#include "master_element/HigherOrderTetSCV.h"
+#include "master_element/HigherOrderTetSCS.h"
+#include "master_element/HigherOrderHexSCV.h"
+#include "master_element/HigherOrderHexSCS.h"
 #include "master_element/HigherOrderTri2DSCS.h"
 #include "master_element/HigherOrderTri2DSCV.h"
 
@@ -178,6 +182,9 @@ namespace nalu{
     if (desc->baseTopo == stk::topology::TRI_3_2D) {
       endPoints = std::make_pair(0, 1);
     }
+    else if (desc->baseTopo == stk::topology::TET_4) {
+      endPoints = std::make_pair(0, 1);
+    }
     else {
       endPoints = std::make_pair(-1, 1);
     }
@@ -185,9 +192,9 @@ namespace nalu{
     auto quad = TensorProductQuadratureRule(desc->polyOrder, endPoints);
 
     if (topo.is_superedge()) {
-      ThrowRequireMsg(desc->baseTopo == stk::topology::QUAD_4_2D || 
+      ThrowRequireMsg(desc->baseTopo == stk::topology::QUAD_4_2D ||
                       desc->baseTopo == stk::topology::TRI_3_2D,
-                      "sorry, we only support Quad_4_2D and TRI_3_2D base topology for superedges");
+                      "sorry, we only support QUAD_4_2D and TET_3_2D base topology for superedges");
       return make_unique<HigherOrderEdge2DSCS>(basis, quad);
     }
 
@@ -196,9 +203,12 @@ namespace nalu{
       
         case stk::topology::HEX_8:
           return make_unique<HigherOrderQuad3DSCS>(basis, quad);
+          
+        case stk::topology::TET_4:
+          return make_unique<HigherOrderTri3DSCS>(basis, quad);
 
         default:
-          ThrowRequireMsg(false, "sorry, we only support HEX_8 base topology for superfaces");
+          ThrowRequireMsg(false, "sorry, we only support HEX_8 and TET_4 base topology for superfaces");
           break;
       }
     }
@@ -208,6 +218,9 @@ namespace nalu{
       
         case stk::topology::QUAD_4_2D:
           return make_unique<HigherOrderQuad2DSCS>(basis, quad);
+          
+        case stk::topology::TET_4:
+          return make_unique<HigherOrderTetSCS>(basis, quad);
 
         case stk::topology::TRI_3_2D:
           return make_unique<HigherOrderTri2DSCS>(basis, quad);
@@ -216,7 +229,7 @@ namespace nalu{
           return make_unique<HigherOrderHexSCS>(basis, quad);
 
         default:
-          ThrowRequireMsg(false, "sorry, we only support QUAD_4_2D, TRI_3_2D and HEX_8 base topology for superelements");
+          ThrowRequireMsg(false, "sorry, we only support QUAD_4_2D, TET_4, TRI_3_2D and HEX_8 base topology for superelements");
           break;
       }
     }
@@ -244,6 +257,9 @@ namespace nalu{
     if (desc->baseTopo == stk::topology::TRI_3_2D) {
       endPoints = std::make_pair(0, 1);
     }
+    else if (desc->baseTopo == stk::topology::TET_4) {
+      endPoints = std::make_pair(0, 1);
+    }
     else {
       endPoints = std::make_pair(-1, 1);
     }
@@ -256,6 +272,9 @@ namespace nalu{
       case stk::topology::QUAD_4_2D:
         return make_unique<HigherOrderQuad2DSCV>(basis, quad);
         
+      case stk::topology::TET_4:
+        return make_unique<HigherOrderTetSCV>(basis, quad);
+        
       case stk::topology::TRI_3_2D:
         return make_unique<HigherOrderTri2DSCV>(basis, quad);
       
@@ -263,7 +282,7 @@ namespace nalu{
         return make_unique<HigherOrderHexSCV>(basis, quad);
       
       default:
-        NaluEnv::self().naluOutputP0() << "sorry, we only support QUAD_4_2D, TRI_3_2D and HEX_8 base topology for superelements" << std::endl;
+        NaluEnv::self().naluOutputP0() << "sorry, we only support QUAD_4_2D, TET_4_2D, TRI_3_2D and HEX_8 base topology for superelements" << std::endl;
         break;
     }
     return nullptr;

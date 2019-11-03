@@ -10,6 +10,7 @@
 #include <element_promotion/QuadNElementDescription.h>
 #include <element_promotion/TriNElementDescription.h>
 #include <element_promotion/HexNElementDescription.h>
+#include <element_promotion/TetNElementDescription.h>
 #include <element_promotion/QuadratureRule.h>
 #include <nalu_make_unique.h>
 #include "NaluEnv.h"
@@ -93,6 +94,13 @@ ElementDescription::create(int dimension, int order, stk::topology topo)
     NaluEnv::self().naluOutputP0() << "basetopo is QUAD_4_2D" << std::endl;
     
     return make_unique<QuadNElementDescription>(nodeLocations1D);
+  }
+  
+  if ( topo.base() == stk::topology::TET_4 ) {
+    ThrowRequireMsg(dimension == 3, "Dimension doesn't match topology TET_4");
+    NaluEnv::self().naluOutputP0() << "basetopo is TET_4" << std::endl;
+    
+    return make_unique<TetNElementDescription>(nodeLocations1D);
   }
   
   else if ( topo.base() == stk::topology::TRI_3_2D ) {

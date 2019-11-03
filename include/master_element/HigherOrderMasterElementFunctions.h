@@ -39,6 +39,11 @@ void gradient_3d(
     double* POINTER_RESTRICT det_j);
 
 double parametric_distance_quad(const double* x);
+double parametric_distance_hex(const double* x);
+
+KOKKOS_FUNCTION
+int ip_per_face(const TensorProductQuadratureRule& quad, const LagrangeBasis& basis);
+
 
 } // namespace nalu
 } // namespace Sierra

@@ -5,14 +5,18 @@ add_sources(GlobalSourceList
    CalculatePolyhedralArea.F
    CalculatePolyhedralVolume.F
    CalculateQuadArea.F
-   HexPCVFEM.C
    HigherOrderEdge2DSCS.C
+   HigherOrderHexSCS.C
+   HigherOrderHexSCV.C
    HigherOrderMasterElementFunctions.C
    HigherOrderQuad2DSCS.C
    HigherOrderQuad2DSCV.C
    HigherOrderQuad3DSCS.C
+   HigherOrderTetSCS.C
+   HigherOrderTetSCV.C
    HigherOrderTri2DSCS.C
    HigherOrderTri2DSCV.C
+   HigherOrderTri3DSCS.C
    Hex27CVFEM.C
    Hex8CVFEM.C
    Hex8FEM.C
