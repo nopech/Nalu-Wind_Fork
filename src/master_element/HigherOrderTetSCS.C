@@ -40,24 +40,61 @@ HigherOrderTetSCS::HigherOrderTetSCS(
   TensorProductQuadratureRule quadrature)
 : MasterElement(),
   nodes1D_(basis.order() + 1),
-  numQuad_(quadrature.num_quad()),
-  ipsPerFace_(nodes1D_ * nodes1D_ * numQuad_ * numQuad_),
+  numQuad_(quadrature.num_quad()*quadrature.num_quad()),
+  numSubsurfacesPerSubelement_(6),
+  numSubsurfacesPerSubface_(3),
+  polyOrder_(nodes1D_-1),
 #ifndef KOKKOS_ENABLE_CUDA
-  nodeMap(make_node_map_hex(basis.order(), true)),
-  faceNodeMap(make_face_node_map_hex(basis.order())),
-  sideNodeOrdinals_(make_side_node_ordinal_map_hex(basis.order())),
+  nodeMap(make_node_map_tet(basis.order(), true)),
+  faceNodeMap(make_face_node_map_tet(basis.order())),
+  sideNodeOrdinals_(make_side_node_ordinal_map_tet(basis.order())),
 #endif
   basis_(std::move(basis)),
   quadrature_(std::move(quadrature))
 #ifndef KOKKOS_ENABLE_CUDA
-  , expRefGradWeights_("reference_gradient_weights", 6*ip_per_face(quadrature, basis), basis.num_nodes())
+  , expRefGradWeights_("reference_gradient_weights", 1, basis.num_nodes())
 #endif
 {
   MasterElement::nDim_ = 3;
-  nodesPerElement_ = nodes1D_ * nodes1D_ * nodes1D_;
-  numIntPoints_ = 3 * (nodes1D_ - 1) * ipsPerFace_;
+  nodesPerElement_ = (polyOrder_+3)*(polyOrder_+2)*(polyOrder_+1)/6; // Tetrahedral number
 
 #ifndef KOKKOS_ENABLE_CUDA
+  // generate hex shape functions used for the isoparametric mapping intgLoc on subsurfaces (scs)
+  intgLocSurfIso_ = Kokkos::View<double**>("integration_point_location_subsurf", numQuad_, 3);
+  if (polyOrder_ == 1) {
+    // define IP location in isoparametric subsurface
+    // IP1, there is just one for P1
+    intgLocSurfIso_(0, 0) = quadrature_.abscissa(0);
+    intgLocSurfIso_(0, 1) = quadrature_.abscissa(0);
+    intgLocSurfIso_(0, 2) = 0; 
+  }
+  else if (polyOrder_ == 2) {
+    // define IP locations in isoparametric subsurface
+    // IP1
+    intgLocSurfIso_(0, 0) = quadrature_.abscissa(0);
+    intgLocSurfIso_(0, 1) = quadrature_.abscissa(0);
+    intgLocSurfIso_(0, 2) = 0;
+    // IP2
+    intgLocSurfIso_(1, 0) = quadrature_.abscissa(1);
+    intgLocSurfIso_(1, 1) = quadrature_.abscissa(0);
+    intgLocSurfIso_(1, 2) = 0;
+    // IP3
+    intgLocSurfIso_(2, 0) = quadrature_.abscissa(0);
+    intgLocSurfIso_(2, 1) = quadrature_.abscissa(1);
+    intgLocSurfIso_(2, 2) = 0;
+    // IP4
+    intgLocSurfIso_(3, 0) = quadrature_.abscissa(1);
+    intgLocSurfIso_(3, 1) = quadrature_.abscissa(1);
+    intgLocSurfIso_(3, 2) = 0;
+  }
+  else {
+    ThrowErrorMsg("Only P1 and P2 is defined for TET_4 elements.");
+  }
+  
+  shape_fcnHex_.resize(numQuad_ * 8);
+  double *p_shape_fcnHex = &shape_fcnHex_[0];
+  hex_shape_fcn_p1(numQuad_, intgLocSurfIso_, &p_shape_fcnHex[0]);
+  
   // set up integration rule and relevant maps on scs
   set_interior_info();
 
@@ -70,123 +107,161 @@ HigherOrderTetSCS::HigherOrderTetSCS(
 #endif
 }
 
+std::vector<double> getCentroid(std::vector<ordinal_type>& nodeOrdinals, std::unique_ptr<ElementDescription>& eleDesc) {
+  const double length = (double)nodeOrdinals.size();
+  const double factor = 1.0/length;
+  std::vector<double>centroid(3, 0.0);
+  for (auto nodeOrdinal : nodeOrdinals) {
+    for (int i = 0; i < 3; ++i) {        
+      const double coord = eleDesc->nodeLocs[nodeOrdinal][i];
+      centroid[i] += factor * coord;
+    }
+  }
+  
+  return centroid;
+}
+
 void
-HigherOrderTetSCS::set_interior_info()
+HigherOrderTetSCS::hex_shape_fcn_p1(
+  const int   npts,
+  Kokkos::View<double**>& par_coord, 
+  double *shape_fcn)
 {
-  const int surfacesPerDirection = nodes1D_ - 1;
-
-  lrscv_ = Kokkos::View<int**>("left_right_state_mapping", numIntPoints_, 2);
-  intgLoc_ = Kokkos::View<double**>("integration_point_location", numIntPoints_, 3);
-  ipWeights_ = Kokkos::View<double*>("ip_weight", numIntPoints_);
-
-  // specify integration point locations in a dimension-by-dimension manner
-  // u direction: bottom-top (0-1)
-  int scalar_index = 0;
-  for (int m = 0; m < surfacesPerDirection; ++m) {
-    for (int l = 0; l < nodes1D_; ++l) {
-      for (int k = 0; k < nodes1D_; ++k) {
-
-        int leftNode; int rightNode; int orientation;
-        if (m % 2 == 0) {
-          leftNode = nodeMap(m, l, k);
-          rightNode = nodeMap(m + 1, l, k);
-          orientation = -1;
-        }
-        else {
-          leftNode = nodeMap(m + 1, l, k);
-          rightNode = nodeMap(m, l, k);
-          orientation = +1;
-        }
-
-        for (int j = 0; j < quadrature_.num_quad(); ++j) {
-          for (int i = 0; i < quadrature_.num_quad(); ++i) {
-            lrscv_(scalar_index, 0) = leftNode;
-            lrscv_(scalar_index, 1) = rightNode;
-
-            intgLoc_(scalar_index, 0) = quadrature_.integration_point_location(k,i);
-            intgLoc_(scalar_index, 1) = quadrature_.integration_point_location(l,j);
-            intgLoc_(scalar_index, 2) = quadrature_.scs_loc(m);
-
-            ipWeights_[scalar_index] = orientation * quadrature_.integration_point_weight(k, l, i, j);
-
-            ++scalar_index;
-          }
-        }
-      }
-    }
-  }
-
-  // t direction: front-back (2-3)
-  for (int m = 0; m < surfacesPerDirection; ++m) {
-    for (int l = 0; l < nodes1D_; ++l) {
-      for (int k = 0; k < nodes1D_; ++k) {
-
-        int leftNode; int rightNode; int orientation;
-        if (m % 2 == 0) {
-          leftNode = nodeMap(l, m + 0, k);
-          rightNode = nodeMap(l, m + 1, k);
-          orientation = -1;
-        }
-        else {
-          leftNode = nodeMap(l, m + 1, k);
-          rightNode = nodeMap(l, m + 0, k);
-          orientation = +1;
-        }
-
-        for (int j = 0; j < quadrature_.num_quad(); ++j) {
-          for (int i = 0; i < quadrature_.num_quad(); ++i) {
-            lrscv_(scalar_index, 0)     = leftNode;
-            lrscv_(scalar_index, 1) = rightNode;
-
-            intgLoc_(scalar_index, 0)    = quadrature_.integration_point_location(k,i);
-            intgLoc_(scalar_index, 1) = quadrature_.scs_loc(m);
-            intgLoc_(scalar_index, 2) = quadrature_.integration_point_location(l,j);
-
-            ipWeights_[scalar_index] = orientation * quadrature_.integration_point_weight(k, l, i, j);
-
-            ++scalar_index;
-          }
-        }
-      }
-    }
-  }
-
-  //s direction: left-right (4-5)
-  for (int m = 0; m < surfacesPerDirection; ++m) {
-    for (int l = 0; l < nodes1D_; ++l) {
-      for (int k = 0; k < nodes1D_; ++k) {
-
-        int leftNode; int rightNode; int orientation;
-        if (m % 2 == 0) {
-          leftNode = nodeMap(l, k, m + 0);
-          rightNode = nodeMap(l, k, m + 1);
-          orientation = +1;
-        }
-        else {
-          leftNode = nodeMap(l, k, m + 1);
-          rightNode = nodeMap(l, k, m + 0);
-          orientation = -1;
-        }
-
-        for (int j = 0; j < quadrature_.num_quad(); ++j) {
-          for (int i = 0; i < quadrature_.num_quad(); ++i) {
-            lrscv_(scalar_index, 0) = leftNode;
-            lrscv_(scalar_index, 1) = rightNode;
-
-            intgLoc_(scalar_index, 0) = quadrature_.scs_loc(m);
-            intgLoc_(scalar_index, 1) = quadrature_.integration_point_location(k,i);
-            intgLoc_(scalar_index, 2) = quadrature_.integration_point_location(l,j);
-
-            ipWeights_[scalar_index] = orientation * quadrature_.integration_point_weight(k, l, i, j);
-
-            ++scalar_index;
-          }
-        }
-      }
-    }
+  for (int j = 0; j < npts; ++j ) {
+    const int eightj = 8*j;
+    const double oneEighth = 1.0/8.0;
+    const double xi   = par_coord(j, 0);
+    const double eta  = par_coord(j, 1);
+    const double zeta = par_coord(j, 2);
+    shape_fcn[0 + eightj] = oneEighth*(1.0-xi)*(1.0-eta)*(1.0-zeta);
+    shape_fcn[1 + eightj] = oneEighth*(1.0+xi)*(1.0-eta)*(1.0-zeta);
+    shape_fcn[2 + eightj] = oneEighth*(1.0+xi)*(1.0+eta)*(1.0-zeta);
+    shape_fcn[3 + eightj] = oneEighth*(1.0-xi)*(1.0+eta)*(1.0-zeta);
+    shape_fcn[4 + eightj] = oneEighth*(1.0-xi)*(1.0-eta)*(1.0+zeta);
+    shape_fcn[5 + eightj] = oneEighth*(1.0+xi)*(1.0-eta)*(1.0+zeta);
+    shape_fcn[6 + eightj] = oneEighth*(1.0+xi)*(1.0+eta)*(1.0+zeta);
+    shape_fcn[7 + eightj] = oneEighth*(1.0-xi)*(1.0+eta)*(1.0+zeta);
   }
 }
 
+void
+HigherOrderTetSCS::set_interior_info()
+{
+  auto desc = ElementDescription::create(3, polyOrder_, stk::topology::TET_4);
+  
+  numSubelements_ = desc->subElementConnectivity.size();
+  numIntPoints_ = numSubelements_ * numSubsurfacesPerSubelement_ * numQuad_;
+  lrscv_ = Kokkos::View<int**>("left_right_state_mapping", numIntPoints_, 2);
+  intgLoc_ = Kokkos::View<double**>("integration_point_location", numIntPoints_, 3);
+  ipWeights_ = Kokkos::View<double*>("ip_weight", numIntPoints_);
+  subsurfaceNodeLoc_.resize(numSubelements_ * numSubsurfacesPerSubelement_ * 4, std::vector<double>(3));
+
+  ordinal_type left;
+  ordinal_type right;
+  
+  int countIP = 0;
+  
+  std::vector<std::vector<int>> subsurfCreationIndices {
+    {0, 1, 2, 3}, // element centroid
+    {0, 1, 2}, // subface centroid 1
+    {0, 1}, // subedge centroid
+    {0, 1, 3}, //subface centroid 2
+    {0, 1, 2, 3}, // element centroid again because of simplicity
+    {0, 1, 2},
+    {1, 2},
+    {1, 2, 3},   
+    {0, 1, 2, 3}, // element centroid again because of simplicity
+    {0, 1, 2},
+    {0, 2},
+    {0, 2, 3}, 
+    {0, 1, 2, 3}, // element centroid again because of simplicity
+    {0, 1, 3},
+    {1, 3},
+    {1, 2, 3},
+    {0, 1, 2, 3}, // element centroid again because of simplicity
+    {0, 1, 3},
+    {0, 3},
+    {0, 2, 3},
+    {0, 1, 2, 3}, // element centroid again because of simplicity
+    {0, 2, 3},
+    {2, 3},
+    {1, 2, 3}
+  };
+
+  // initialize intgLoc_
+  for (int i = 0; i < numIntPoints_; ++i) {
+    for (int j = 0; j < nDim_; ++j) {
+      intgLoc_(i, j) = 0.0;
+    }
+  }
+   
+  // loop through each subelement and compute the integration points at each subsurface in the subelement
+  int countNode = 0;
+  for (int subElement = 0; subElement < numSubelements_; ++subElement) {
+    
+    int countSubsurf = 0;
+    for (int subSurf = 0; subSurf < 6; ++subSurf) {
+      
+      for (int node = 0; node < 4; ++node) {
+        const int numOrd = subsurfCreationIndices[countSubsurf].size();
+        std::vector<ordinal_type> centroidDefiningOrdinals(numOrd);
+        
+        for (int i = 0; i < numOrd; ++i) {
+          const int ordIndex = subsurfCreationIndices[countSubsurf][i];
+          centroidDefiningOrdinals[i] = desc->subElementConnectivity[subElement][ordIndex];
+        }
+        
+        // compute subsurface node location and save it for later usage in areav computation
+        std::vector<double> nodeLoc = getCentroid(centroidDefiningOrdinals, desc);
+        
+        int subsurfaceNodeLocIndex = 24*subElement + 4*subSurf + node;
+        subsurfaceNodeLoc_[subsurfaceNodeLocIndex] = nodeLoc;
+        
+        // if current ordinals describe a subedge (only 2 ordinals), use them for the left/right node mapping
+        if (node == 2) {
+          left = centroidDefiningOrdinals[0];
+          right = centroidDefiningOrdinals[1];
+        }
+        
+        countSubsurf++;
+      }
+
+      // isoparametric mapping of the intgLoc of a isoparametric rectangle to the isoparametric tet
+      int countHexSF = 0;
+      for (int quadPoint = 0; quadPoint < numQuad_; ++quadPoint) { // for each ip at subsurf
+        std::cout << "new quadpoint" << std::endl;
+
+        // IP weight
+        int orientation = 1;
+        ipWeights_(countIP) = orientation * quadrature_.weights(quadPoint) * quadrature_.weights(quadPoint);
+
+        // left/right node mapping
+        lrscv_(countIP, 0) = left;
+        lrscv_(countIP, 1) = right;
+        std::cout << "left node: " << lrscv_(countIP, 0) << ", right node: " << lrscv_(countIP, 1) << std::endl;
+
+        for (int k = 0; k < 2; ++k) { // repeat 2 times because hex shape functions have 8 nodes but the subsurf has 4 nodes
+          
+          for (int i = 0; i < 4; ++i) { // for each node of the subsurf
+            int subsurfaceNodeLocIndex = 24*subElement + 4*subSurf + i;
+            
+            for (int j = 0; j < 3; ++j) { // for each dimension
+              intgLoc_(countIP, j) += (shape_fcnHex_[countHexSF] * subsurfaceNodeLoc_[subsurfaceNodeLocIndex][j]);
+            }
+            
+            countHexSF++;
+          }
+        }
+        
+        std::cout << "isoCalc intgLoc: " << intgLoc_(countIP, 0) << ", " << intgLoc_(countIP, 1) << ", " << intgLoc_(countIP, 2) << std::endl;
+        countIP++;
+        
+      } // ip
+    } // subSurf
+  } // subElement
+}
+
+// copied from hex and not yet adapted to tet
 int HigherOrderTetSCS::opposing_face_map(int k, int l, int i, int j, int face_index)
 {
   const int surfacesPerDirection = nodes1D_ - 1;
@@ -210,169 +285,83 @@ int HigherOrderTetSCS::opposing_face_map(int k, int l, int i, int j, int face_in
 void
 HigherOrderTetSCS::set_boundary_info()
 {
-  const int numFaceIps = 6 * ipsPerFace_;
-
-  oppFace_ = Kokkos::View<int*>("opposing_face_for_ip", numFaceIps);
+  const int numFaces = 4;
+  const int nodesPerFace = 0.5*(nodes1D_*(nodes1D_+1)); // triangular number
+  ipsPerFace_ = nodesPerFace * numQuad_ * numQuad_;
+  
+  const int numFaceIps = numFaces*ipsPerFace_;
   ipNodeMap_ = Kokkos::View<int*>("owning_node_for_ip", numFaceIps);
-  oppNode_ = Kokkos::View<int*>("opposing_node_for_ip", numFaceIps);
-  intgExpFace_ = Kokkos::View<double**>("exposed_face_integration_loc", numFaceIps, 3);
-
-  // tensor-product style access to the map
-  auto face_node_number = [&] (int i, int j, int faceOrdinal)
-  {
-    return faceNodeMap(faceOrdinal, j, i);
-  };
-
-
-  // location of the faces in the correct order
-  const std::vector<double> faceLoc = {-1.0, +1.0, +1.0, -1.0, -1.0, +1.0};
-
-  // Set points face-by-face
-  int scalar_index = 0; int faceOrdinal = 0;
-
-  // front face: t = -1.0: counter-clockwise
-  faceOrdinal = 0;
-  for (int l = 0; l < nodes1D_; ++l) {
-    for (int k = 0; k < nodes1D_; ++k) {
-      const int nearNode = face_node_number(k,l,faceOrdinal);
-      const int oppNode = nodeMap(l,1,k);
-
-      //tensor-product quadrature for a particular sub-cv
-      for (int j = 0; j < numQuad_; ++j) {
-        for (int i = 0; i < numQuad_; ++i) {
-          ipNodeMap_[scalar_index] = nearNode;
-          oppNode_[scalar_index] = oppNode;
-          oppFace_[scalar_index] = opposing_face_map(k,l,i,j,faceOrdinal);
-
-          intgExpFace_(scalar_index, 0) = intgLoc_(oppFace_[scalar_index], 0);
-          intgExpFace_(scalar_index, 1) = faceLoc[faceOrdinal];
-          intgExpFace_(scalar_index, 2) = intgLoc_(oppFace_[scalar_index], 2);
-
-          ++scalar_index;
-        }
+  intgExpFace_ = Kokkos::View<double**>("exposed_face_integration_loc", numFaceIps, nDim_);
+  
+  auto desc = ElementDescription::create(3, polyOrder_, stk::topology::TET_4);
+  int numSubfacePerFace;
+  std::vector<std::vector<int>> subfaceCreationIndices;
+  
+  if (polyOrder_ == 1) {
+    numSubfacePerFace = 1;
+    subfaceCreationIndices {
+      {0, 1, 2}
+    };
+  }
+  else if (polyOrder_ == 2) {
+    numSubfacePerFace = 4;
+    subfaceCreationIndices {
+      {0, 1, 5},
+      {1, 2, 3},
+      {5, 1, 3},
+      {5, 3, 4}
+    };
+  }
+  else {
+    ThrowErrorMsg("Only P1 and P2 is defined for TET_4 elements.");
+  }
+  
+  subsurfaceNodeLoc_.resize(numFaces * numSubfacePerFace * numSubsurfacesPerSubface_ * 4, std::vector<double>(3));
+  
+  
+  // iterate through each face of the element
+  for (int face = 0; face < numFaces; ++face) {
+  
+    // iterate through each subface of the face
+    for (int subFace = 0; subFace < numSubfacePerFace; ++subFace) {
+      
+      std::vector<ordinal_type> subfaceOrdinals(3);
+      for (int i = 0; i < 3; ++i) {
+        const int subfaceNodeIndex = subfaceCreationIndices[subFace][i];
+        subfaceOrdinals[i] = desc->faceNodeMap[face][subfaceNodeIndex];
       }
+      
+      std::vector<double> subfaceCentroid = getCentroid(subfaceOrdinals, desc);
+      
+      std::vector<std::vector<ordinal_type>> subedgeOrdinals = {
+        {subfaceOrdinals[0], subfaceOrdinals[1]},
+        {subfaceOrdinals[1], subfaceOrdinals[2]},
+        {subfaceOrdinals[2], subfaceOrdinals[0]}
+      };
+      
+      std::vector<double> subedge1Centroid = getCentroid(subedgeOrdinals[0], desc);
+      std::vector<double> subedge2Centroid = getCentroid(subedgeOrdinals[1], desc);
+      std::vector<double> subedge3Centroid = getCentroid(subedgeOrdinals[2], desc);
+        
+      for (int subSurf = 0; subSurf < 3; ++subSurf) {
+        subsurfaceNodeLocBC_[subsurfaceNodeLocIndex] = nodeLoc;
+      }
+      
+      
+      // compute subface centroid
+//      std::vector<double> nodeLoc = getCentroid(centroidDefiningOrdinals, desc);
+      // compute subedge 1 centroid
+      // compute subedge 2 centroid
+      // isoparametric mapping
     }
   }
-
-  // right face: s = +1.0: counter-clockwise
-  faceOrdinal = 1;
-  for (int l = 0; l < nodes1D_; ++l) {
-    for (int k = 0; k < nodes1D_; ++k) {
-      const int nearNode = face_node_number(k,l,faceOrdinal);
-      const int oppNode = nodeMap(l,k,nodes1D_-2);
-
-      //tensor-product quadrature for a particular sub-cv
-      for (int j = 0; j < numQuad_; ++j) {
-        for (int i = 0; i < numQuad_; ++i) {
-          ipNodeMap_[scalar_index] = nearNode;
-          oppNode_[scalar_index] = oppNode;
-          oppFace_[scalar_index] = opposing_face_map(k,l,i,j,faceOrdinal);
-
-          intgExpFace_(scalar_index, 0) = faceLoc[faceOrdinal];
-          intgExpFace_(scalar_index, 1) = intgLoc_(oppFace_[scalar_index], 1);
-          intgExpFace_(scalar_index, 2) = intgLoc_(oppFace_[scalar_index], 2);
-
-          ++scalar_index;
-        }
-      }
-    }
-  }
-
-  // back face: t = +1.0: s-direction reversed
-  faceOrdinal = 2;
-  for (int l = 0; l < nodes1D_; ++l) {
-    for (int k = nodes1D_-1; k >= 0; --k) {
-      const int nearNode = face_node_number(k,l,faceOrdinal);
-      const int oppNode = nodeMap(l,nodes1D_-2,k);
-
-      //tensor-product quadrature for a particular sub-cv
-      for (int j = 0; j < numQuad_; ++j) {
-        for (int i = numQuad_-1; i >= 0; --i) {
-          ipNodeMap_[scalar_index] = nearNode;
-          oppNode_[scalar_index] = oppNode;
-          oppFace_[scalar_index] = opposing_face_map(k,l,i,j,faceOrdinal);
-
-          intgExpFace_(scalar_index, 0) = intgLoc_(oppFace_[scalar_index], 0);
-          intgExpFace_(scalar_index, 1) = faceLoc[faceOrdinal];
-          intgExpFace_(scalar_index, 2) = intgLoc_(oppFace_[scalar_index], 2);
-
-          ++scalar_index;
-        }
-      }
-    }
-  }
-
-  //left face: x = -1.0 swapped t and u
-  faceOrdinal = 3;
-  for (int l = 0; l < nodes1D_; ++l) {
-    for (int k = 0; k < nodes1D_; ++k) {
-      const int nearNode = face_node_number(l,k,faceOrdinal);
-      const int oppNode = nodeMap(k,l,1);
-
-      //tensor-product quadrature for a particular sub-cv
-      for (int j = 0; j < numQuad_; ++j) {
-        for (int i = 0; i < numQuad_; ++i) {
-          ipNodeMap_[scalar_index] = nearNode;
-          oppNode_[scalar_index]   = oppNode;
-          oppFace_[scalar_index]   = opposing_face_map(l,k,j,i,faceOrdinal);
-
-          intgExpFace_(scalar_index, 0) = faceLoc[faceOrdinal];
-          intgExpFace_(scalar_index, 1) = intgLoc_(oppFace_[scalar_index], 1);
-          intgExpFace_(scalar_index, 2) = intgLoc_(oppFace_[scalar_index], 2);
-
-          ++scalar_index;
-        }
-      }
-    }
-  }
-
-  //bottom face: u = -1.0: swapped s and t
-  faceOrdinal = 4;
-  for (int l = 0; l < nodes1D_; ++l) {
-    for (int k = 0; k < nodes1D_; ++k) {
-      const int nearNode = face_node_number(l,k,faceOrdinal);
-      const int oppNode = nodeMap(1,k,l);
-
-      //tensor-product quadrature for a particular sub-cv
-      for (int j = 0; j < numQuad_; ++j) {
-        for (int i = 0; i < numQuad_; ++i) {
-          ipNodeMap_[scalar_index] = nearNode;
-          oppNode_[scalar_index] = oppNode;
-          oppFace_[scalar_index] = opposing_face_map(l,k,j,i,faceOrdinal);
-
-          intgExpFace_(scalar_index, 0) = intgLoc_(oppFace_[scalar_index],0);
-          intgExpFace_(scalar_index, 1) = intgLoc_(oppFace_[scalar_index],1);
-          intgExpFace_(scalar_index, 2) = faceLoc[faceOrdinal];
-
-          ++scalar_index;
-        }
-      }
-    }
-  }
-
-  //top face: u = +1.0: counter-clockwise
-  faceOrdinal = 5;
-  for (int l = 0; l < nodes1D_; ++l) {
-    for (int k = 0; k < nodes1D_; ++k) {
-      const int nearNode = face_node_number(k,l,faceOrdinal);
-      const int oppNode = nodeMap(nodes1D_-2,l,k);
-
-      //tensor-product quadrature for a particular sub-cv
-      for (int j = 0; j < numQuad_; ++j) {
-        for (int i = 0; i < numQuad_; ++i) {
-          ipNodeMap_[scalar_index] = nearNode;
-          oppNode_[scalar_index] = oppNode;
-          oppFace_[scalar_index] = opposing_face_map(k,l,i,j,faceOrdinal);
-
-          intgExpFace_(scalar_index, 0) = intgLoc_(oppFace_[scalar_index],0);
-          intgExpFace_(scalar_index, 1) = intgLoc_(oppFace_[scalar_index],1);
-          intgExpFace_(scalar_index, 2) = faceLoc[faceOrdinal];
-
-          ++scalar_index;
-        }
-      }
-    }
-  }
+  
+  
+  
+  
+  
+  
+  
 }
 
 void

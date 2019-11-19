@@ -50,7 +50,10 @@ private:
   void set_tensor_product_node_mappings();
   void set_boundary_node_mappings();
   void set_isoparametric_coordinates();
-  ordinal_type& nmap(ordinal_type i, ordinal_type j, ordinal_type k ) { return nodeMap.at(i+nodes1D*(j+nodes1D*k)); };
+  std::vector<double> scaleNodeLocs(std::vector<double> in_nodeLocs);
+  ordinal_type& nmap(ordinal_type i, ordinal_type j, ordinal_type k ) { return nodeMap.at( ( nodes1D*(nodes1D+1)*(nodes1D+2)/6 - (nodes1D-k)*(nodes1D-k+1)*(nodes1D-k+2)/6 ) + ( (nodes1D-k)*(nodes1D-k+1)/2 - (nodes1D-k-j)*(nodes1D-k-j+1)/2 ) + i ); };
+  ordinal_type node_map(ordinal_type i, ordinal_type j, ordinal_type k) const { return nodeMap.at( ( nodes1D*(nodes1D+1)*(nodes1D+2)/6 - (nodes1D-k)*(nodes1D-k+1)*(nodes1D-k+2)/6 ) + ( (nodes1D-k)*(nodes1D-k+1)/2 - (nodes1D-k-j)*(nodes1D-k-j+1)/2 ) + i ); };
+  ordinal_type node_map_bc(ordinal_type i, ordinal_type j) const { return nodeMapBC.at( (j*(nodes1D+1)-j*(j+1)/2) + i ); };
   std::vector<ordinal_type>& inmap(ordinal_type j) { return inverseNodeMap.at(j); };
 };
 

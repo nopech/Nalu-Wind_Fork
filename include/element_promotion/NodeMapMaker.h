@@ -17,22 +17,23 @@ namespace nalu
 {
 
 Kokkos::View<int***> make_node_map_hex(int, bool  = false);
-Kokkos::View<int***> make_inverse_node_map_hex(int, bool = false);
-
-Kokkos::View<int**> make_node_map_quad(int);
-Kokkos::View<int**> make_node_map_tri(int);
+Kokkos::View<int***> make_node_map_tet(int, bool  = false);
+Kokkos::View<int**>  make_node_map_quad(int);
+Kokkos::View<int**>  make_node_map_tri(int);
 
 Kokkos::View<int***> make_face_node_map_hex(int);
-Kokkos::View<int**> make_face_node_map_quad(int);
-Kokkos::View<int**> make_face_node_map_tri(int);
+Kokkos::View<int***> make_face_node_map_tet(int);
+Kokkos::View<int**>  make_face_node_map_quad(int);
+Kokkos::View<int**>  make_face_node_map_tri(int);
 
 Kokkos::View<int**> make_side_node_ordinal_map_hex(int);
+Kokkos::View<int**> make_side_node_ordinal_map_tet(int);
 Kokkos::View<int**> make_side_node_ordinal_map_quad(int);
 Kokkos::View<int**> make_side_node_ordinal_map_tri(int);
 
 Kokkos::View<int*> make_node_map_edge(int);
 
-
+Kokkos::View<int***> make_inverse_node_map_hex(int, bool = false);
 
 } // namespace nalu
 } // namespace sierra

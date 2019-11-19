@@ -15,6 +15,7 @@
 #include <element_promotion/ElementDescription.h>
 #include <element_promotion/HexNElementDescription.h>
 #include <element_promotion/QuadNElementDescription.h>
+#include <element_promotion/TetNElementDescription.h>
 
 #include <AlgTraits.h>
 #include <KokkosInterface.h>
@@ -48,6 +49,11 @@ public:
   virtual ~HigherOrderTetSCS() {}
 
   void shape_fcn(double *shpfc) final;
+  
+  void hex_shape_fcn_p1(
+    const int npts,
+    Kokkos::View<double**>& par_coord, 
+    double* shape_fcn);
 
   void determinant(
     const int nelem,
@@ -125,8 +131,12 @@ private:
     double *POINTER_RESTRICT areaVector) const;
 
   const int nodes1D_;
+  const int polyOrder_;
   const int numQuad_;
-  const int ipsPerFace_;
+  int ipsPerFace_;
+  int numSubelements_;
+  const int numSubsurfacesPerSubelement_; // subsurfaces are the individual faces of the CV
+  const int numSubsurfacesPerSubface_; // subsurfaces are the individual faces of the CV, faces are on the boundary of the element
 
   const Kokkos::View<int***> nodeMap;
   const Kokkos::View<int***> faceNodeMap;
@@ -140,11 +150,15 @@ private:
   Kokkos::View<double**> shapeFunctionVals_;
   Kokkos::View<double***> shapeDerivs_;
   Kokkos::View<double***> expFaceShapeDerivs_;
+  Kokkos::View<double**> intgLocSurfIso_;
   Kokkos::View<double**> intgLoc_;
   Kokkos::View<double**> intgExpFace_;
   Kokkos::View<double*> ipWeights_;
   Kokkos::View<int*> ipNodeMap_;
   Kokkos::View<int*> oppFace_;
+  std::vector<std::vector<double>> subsurfaceNodeLoc_; // internal subsurfaces, defined with 4 points
+  std::vector<std::vector<double>> subsurfaceNodeLocBC_; // boundary subsurfaces, defined with 4 points
+  std::vector<double> shape_fcnHex_;
 
   AlignedViewType<DoubleType**[3]> expRefGradWeights_;
 };

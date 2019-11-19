@@ -56,16 +56,25 @@ int poly_order_from_topology(int dimension, stk::topology topo)
   
   if (baseTopo == stk::topology::QUAD_4_2D) {
     nodes1D = std::sqrt(topo.num_nodes()+1);
-  } 
+  }
   else if (baseTopo == stk::topology::TRI_3_2D) {
     nodes1D = 0.5*( std::sqrt(8*topo.num_nodes()+1) - 1 ); // Triangular number solved for n
-  } 
+  }
   else if (baseTopo == stk::topology::HEX_8) {
     nodes1D = std::cbrt(topo.num_nodes()+1);
+  }
+  else if (baseTopo == stk::topology::TET_4) {
+    const double T = topo.num_nodes();
+    const double onethird = 1.0/3.0;
+    const double twothird = 2.0/3.0;
+    nodes1D = round(-1.0 + std::pow(27.0*T + std::sqrt(-3.0 + 729.0*T*T), onethird)/std::pow(3.0, twothird) + 1.0/std::pow(81.0*T + 3.0*std::sqrt(-3.0 + 729.0*T*T), onethird));
   }
   else {
     ThrowErrorMsg("Topology not known to function poly_order_from_topology()");
   }
+  
+  std::cout << "no nodes = " << topo.num_nodes() << std::endl;
+  std::cout << "nodes1D = " << nodes1D << std::endl;
   
   const int polynomial_order = nodes1D-1;
   return polynomial_order;
@@ -96,13 +105,6 @@ ElementDescription::create(int dimension, int order, stk::topology topo)
     return make_unique<QuadNElementDescription>(nodeLocations1D);
   }
   
-  if ( topo.base() == stk::topology::TET_4 ) {
-    ThrowRequireMsg(dimension == 3, "Dimension doesn't match topology TET_4");
-    NaluEnv::self().naluOutputP0() << "basetopo is TET_4" << std::endl;
-    
-    return make_unique<TetNElementDescription>(nodeLocations1D);
-  }
-  
   else if ( topo.base() == stk::topology::TRI_3_2D ) {
     ThrowRequireMsg(dimension == 2, "Dimension doesn't match topology TRI_3_2D");
     NaluEnv::self().naluOutputP0() << "basetopo is TRI_3_2D" << std::endl;
@@ -117,12 +119,20 @@ ElementDescription::create(int dimension, int order, stk::topology topo)
     return make_unique<HexNElementDescription>(nodeLocations1D);
   }
   
+  if ( topo.base() == stk::topology::TET_4 ) {
+    ThrowRequireMsg(dimension == 3, "Dimension doesn't match topology TET_4");
+    NaluEnv::self().naluOutputP0() << "basetopo is TET_4" << std::endl;
+    
+    return make_unique<TetNElementDescription>(nodeLocations1D);
+  }
+  
   else {
     ThrowErrorMsg("basetopo is unknown");
   }
   return nullptr;
 }
 
+// Just here to satisfy UnitTest*, they are not updated to support new HO elements
 std::unique_ptr<ElementDescription>
 ElementDescription::create(int dimension, int order)
 {

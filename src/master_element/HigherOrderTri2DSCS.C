@@ -297,7 +297,7 @@ HigherOrderTri2DSCS::set_interior_info()
 void
 HigherOrderTri2DSCS::set_boundary_info()
 {
-  const int numFaces = 2*nDim_;
+  const int numFaces = 3;
   const int nodesPerFace = nodes1D_;
   ipsPerFace_ = nodesPerFace*quadrature_.num_quad();
 

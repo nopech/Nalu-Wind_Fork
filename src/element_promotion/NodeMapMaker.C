@@ -57,6 +57,22 @@ Kokkos::View<int***> make_node_map_hex(int p, bool isPromoted)
   return node_map;
 }
 
+// Workaround, Kokkos View is actually bigger than the number of nodes
+Kokkos::View<int***> make_node_map_tet(int p, bool isPromoted)
+{
+  const int nodes1D = p + 1;
+  Kokkos::View<int***> node_map("node_map", nodes1D, nodes1D, nodes1D);
+//  auto desc = ElementDescription::create(3, p, stk::topology::TET_4);
+//  for (int i = 0; i < nodes1D; ++i) {
+//    for (int j = 0; j < nodes1D-i; ++j) {
+//      for (int k = 0; k < nodes1D-j-i; ++k) {
+//        node_map(k,j,i) = desc->node_map(i,j,k);
+//      }
+//    }
+//  }
+  return node_map;
+}
+
 Kokkos::View<int**> make_node_map_quad(int p)
 {
   const int nodes1D = p + 1;
@@ -101,6 +117,22 @@ Kokkos::View<int***> make_face_node_map_hex(int p)
   return face_node_map;
 }
 
+// Workaround, Kokkos View is actually bigger than the number of nodes
+Kokkos::View<int***> make_face_node_map_tet(int p)
+{
+  const int nodes1D = p + 1;
+  Kokkos::View<int***> face_node_map("face_node_map", 4, nodes1D, nodes1D);
+//  auto desc = ElementDescription::create(3, p, stk::topology::TET_4);
+//  for (int faceOrdinal = 0; faceOrdinal < 4; ++faceOrdinal) {
+//    for (int j = 0; j < nodes1D; ++j) {
+//      for (int i = 0; i < nodes1D-j; ++i) {
+//        face_node_map(faceOrdinal, j, i) = desc->faceNodeMap[faceOrdinal][(j*(nodes1D+1)-j*(j+1)/2) + i];
+//      }
+//    }
+//  }
+  return face_node_map;
+}
+
 Kokkos::View<int**> make_face_node_map_quad(int p)
 {
   const int nodes1D = p + 1;
@@ -137,6 +169,19 @@ Kokkos::View<int**> make_side_node_ordinal_map_hex(int p)
     for (int i = 0; i < nodes1D*nodes1D; ++i) {
       face_node_map(faceOrdinal, i) = desc->sideOrdinalMap[faceOrdinal][i];
   }}
+  return face_node_map;
+}
+
+Kokkos::View<int**> make_side_node_ordinal_map_tet(int p)
+{
+  const int nodes1D = p + 1;
+  auto desc = ElementDescription::create(3, p, stk::topology::TET_4);
+  Kokkos::View<int**> face_node_map("side_node_ordinal_map", 4, desc->nodesPerSide);
+//  for (int faceOrdinal = 0; faceOrdinal < 4; ++faceOrdinal) {
+//    for (int i = 0; i < desc->nodesPerSide; ++i) {
+//      face_node_map(faceOrdinal, i) = desc->sideOrdinalMap[faceOrdinal][i];
+//    }
+//  }
   return face_node_map;
 }
 
