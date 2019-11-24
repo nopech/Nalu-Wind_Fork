@@ -93,6 +93,15 @@ namespace internal {
     const stk::mesh::PartVector& elemPartsToBePromoted,
     stk::mesh::Part& edgePart,
     stk::mesh::Part& facePart);
+  
+  std::pair<stk::mesh::PartVector, stk::mesh::PartVector>
+  promote_elements_tet(
+    stk::mesh::BulkData& bulk,
+    const ElementDescription& desc,
+    const VectorFieldType& coordField,
+    const stk::mesh::PartVector& elemPartsToBePromoted,
+    stk::mesh::Part& edgePart,
+    stk::mesh::Part& facePart);
 
   ConnectivityMap
   connectivity_map_for_parent_rank(

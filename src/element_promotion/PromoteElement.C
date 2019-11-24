@@ -75,6 +75,11 @@ promote_elements(
     value = internal::promote_elements_hex(bulk, desc, coordField, partsToBePromoted, *edgePart, *facePart);
   }
   
+  else if (desc.baseTopo == stk::topology::TET_4) {
+    ThrowRequire(facePart != nullptr);
+    value = internal::promote_elements_tet(bulk, desc, coordField, partsToBePromoted, *edgePart, *facePart);
+  }
+  
   else {
     ThrowErrorMsg("Topology not implemented for promotion");
   }
@@ -215,6 +220,74 @@ promote_elements_hex(
 
   stk::mesh::Selector allEdgeSelector = edgePart | edgeSelector;
   stk::mesh::Selector allFaceSelector = bulk.mesh_meta_data().get_topology_root_part(stk::topology::QUAD_4);
+  stk::mesh::Selector newFaceSelector = (!faceSelector) & allFaceSelector;
+
+  bulk.modification_begin();
+
+  ConnectivityMap edgeNodeMap = connectivity_map_for_parent_rank(
+    bulk,
+    desc.newNodesPerEdge,
+    allEdgeSelector,
+    stk::topology::EDGE_RANK
+  );
+
+  ConnectivityMap faceNodeMap = connectivity_map_for_parent_rank(
+    bulk,
+    desc.newNodesPerFace,
+    allFaceSelector,
+    stk::topology::FACE_RANK
+  );
+
+  ConnectivityMap volNodeMap = connectivity_map_for_parent_rank(
+    bulk,
+    desc.newNodesPerVolume,
+    volSelector,
+    stk::topology::ELEM_RANK
+  );
+
+  stk::mesh::PartVector promotedElemParts = create_super_elements(
+    bulk,
+    desc,
+    partsToBePromoted,
+    edgeNodeMap,
+    faceNodeMap,
+    volNodeMap
+  );
+
+  destroy_entities(bulk, edgePart, stk::topology::EDGE_RANK);
+  destroy_entities(bulk, newFaceSelector, stk::topology::FACE_RANK);
+
+  bulk.modification_end();
+
+  stk::mesh::PartVector promotedSideParts = create_boundary_elements(bulk, desc, partsToBePromoted);
+
+  set_coordinates_hex(bulk, desc, promotedElemParts, coordField);
+
+  return std::make_pair(promotedElemParts, promotedSideParts);
+}
+//--------------------------------------------------------------------------
+std::pair<stk::mesh::PartVector, stk::mesh::PartVector>
+promote_elements_tet(
+  stk::mesh::BulkData& bulk,
+  const ElementDescription& desc,
+  const VectorFieldType& coordField,
+  const stk::mesh::PartVector& partsToBePromoted,
+  stk::mesh::Part& edgePart,
+  stk::mesh::Part&  /* facePart */)
+{
+  ThrowRequire(check_parts_for_promotion(partsToBePromoted));
+  ThrowRequireMsg(!bulk.is_automatic_aura_on(), "Promotion not yet tested for automatic aura");
+  ThrowRequire(desc.baseTopo == stk::topology::TET_4);
+
+  stk::mesh::Selector edgeSelector = stk::mesh::selectUnion(base_edge_parts(partsToBePromoted));
+  stk::mesh::Selector faceSelector = stk::mesh::selectUnion(base_face_parts(partsToBePromoted));
+  stk::mesh::Selector volSelector  = stk::mesh::selectUnion(base_elem_parts(partsToBePromoted));
+
+  stk::mesh::create_edges(bulk, volSelector, &edgePart);
+  stk::mesh::create_faces(bulk, volSelector);
+
+  stk::mesh::Selector allEdgeSelector = edgePart | edgeSelector;
+  stk::mesh::Selector allFaceSelector = bulk.mesh_meta_data().get_topology_root_part(stk::topology::TRI_3);
   stk::mesh::Selector newFaceSelector = (!faceSelector) & allFaceSelector;
 
   bulk.modification_begin();

@@ -50,10 +50,29 @@ public:
 
   void shape_fcn(double *shpfc) final;
   
-  void hex_shape_fcn_p1(
+  void hex_shape_fcn_p1( // used for the isoparametric mapping of the intgLoc on the scs
     const int npts,
     Kokkos::View<double**>& par_coord, 
     double* shape_fcn);
+  
+  void tet_shape_fcn_p1(
+    const int npts,
+    Kokkos::View<double**>& par_coord, 
+    double* shape_fcn);
+  
+  void tet_shape_fcn_p2(
+    const int npts,
+    Kokkos::View<double**>& par_coord, 
+    double* shape_fcn);
+  
+  void tet_deriv_shape_fcn_p1(
+    const int npts, 
+    double *deriv);
+  
+  void tet_deriv_shape_fcn_p2(
+    const int npts,
+    Kokkos::View<double**>& par_coord, 
+    double *deriv);
 
   void determinant(
     const int nelem,
@@ -124,12 +143,6 @@ private:
 
   KOKKOS_FUNCTION int opposing_face_map(int k, int l, int i, int j, int face_index);
 
-  template <Jacobian::Direction direction> void
-  area_vector(
-    const double *POINTER_RESTRICT elemNodalCoords,
-    double *POINTER_RESTRICT shapeDeriv,
-    double *POINTER_RESTRICT areaVector) const;
-
   const int nodes1D_;
   const int polyOrder_;
   const int numQuad_;
@@ -154,6 +167,7 @@ private:
   Kokkos::View<double**> intgLoc_;
   Kokkos::View<double**> intgExpFace_;
   Kokkos::View<double*> ipWeights_;
+  Kokkos::View<double*> ipWeightsExpFace_;
   Kokkos::View<int*> ipNodeMap_;
   Kokkos::View<int*> oppFace_;
   std::vector<std::vector<double>> subsurfaceNodeLoc_; // internal subsurfaces, defined with 4 points
