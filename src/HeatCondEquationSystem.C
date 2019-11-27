@@ -74,6 +74,7 @@
 #include <user_functions/SteadyThermalContact3DSrcNodeSuppAlg.h>
 #include <user_functions/SteadyThermal3dContactSrcElemSuppAlgDep.h>
 #include <user_functions/SteadyThermal3dContactSrcElemKernel.h>
+#include <user_functions/LinearIncreaseMatchingCornersAuxFunction.h>
 
 #include <overset/UpdateOversetFringeAlgorithmDriver.h>
 
@@ -520,7 +521,7 @@ HeatCondEquationSystem::register_wall_bc(
     }
   }
 
-  // extract the value for user specified temperaure and save off the AuxFunction
+  // extract the value for user specified temperature and save off the AuxFunction
   WallUserData userData = wallBCData.userData_;
   std::string temperatureName = "temperature";
   UserDataType theDataType = get_bc_data_type(userData, temperatureName);
@@ -549,8 +550,11 @@ HeatCondEquationSystem::register_wall_bc(
       else if ( fcnName == "steady_3d_thermal" ) {
         theAuxFunc = new SteadyThermal3dContactAuxFunction();
       }
+      else if ( fcnName == "linear_increase_matching_corners" ) {
+        theAuxFunc = new LinearIncreaseMatchingCornersAuxFunction();
+      }
       else {
-        throw std::runtime_error("Only steady_2d/3d_thermal user functions supported");
+        throw std::runtime_error("Only steady_2d/3d_thermal and linear_increase_matching_corners user functions supported");
 
       }
     }

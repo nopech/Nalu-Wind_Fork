@@ -184,12 +184,12 @@ AssembleScalarElemDiffSolverAlgorithm::execute()
 
       for ( int ni = 0; ni < num_nodes; ++ni ) {
         stk::mesh::Entity node = node_rels[ni];
-        std::cout << "#######################" << std::endl;
-        std::cout << "current node print:    " << node << std::endl;
-        std::cout << "current node offset:   " << node.local_offset() << std::endl;
-        std::cout << "current node key:      " << bulk_data.entity_key(node) << std::endl;
-        std::cout << "current node id:       " << bulk_data.identifier(node) << std::endl;
-        std::cout << "current node local id: " << bulk_data.local_id(node) << std::endl;
+//        std::cout << "#######################" << std::endl;
+//        std::cout << "current node print:    " << node << std::endl;
+//        std::cout << "current node offset:   " << node.local_offset() << std::endl;
+//        std::cout << "current node key:      " << bulk_data.entity_key(node) << std::endl;
+//        std::cout << "current node id:       " << bulk_data.identifier(node) << std::endl;
+//        std::cout << "current node local id: " << bulk_data.local_id(node) << std::endl;
 
         // set connected nodes
         connected_nodes[ni] = node;

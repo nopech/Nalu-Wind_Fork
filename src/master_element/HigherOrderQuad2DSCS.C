@@ -120,7 +120,7 @@ HigherOrderQuad2DSCS::set_interior_info()
   // specify integration point locations in a dimension-by-dimension manner
 
   //u-direction
-  std::cout << "### u-direction" << std::endl;
+//  std::cout << "### u-direction" << std::endl;
   int lrscv_index = 0;
   int scalar_index = 0;
   for (int m = 0; m < linesPerDirection; ++m) {
@@ -147,12 +147,12 @@ HigherOrderQuad2DSCS::set_interior_info()
 
         intgLoc_(scalar_index, 0) = quadrature_.integration_point_location(l,j);
         intgLoc_(scalar_index, 1) = quadrature_.scs_loc(m);
-        std::cout << "intgLoc_[*,0]: " << quadrature_.integration_point_location(l,j) << std::endl;
-        std::cout << "intgLoc_[*,1]: " << quadrature_.scs_loc(m) << std::endl;
+//        std::cout << "intgLoc_[*,0]: " << quadrature_.integration_point_location(l,j) << std::endl;
+//        std::cout << "intgLoc_[*,1]: " << quadrature_.scs_loc(m) << std::endl;
 
         //compute the quadrature weight
         ipWeights_(scalar_index) = orientation*quadrature_.integration_point_weight(l,j);
-        std::cout << "ipWeights_: " << orientation*quadrature_.integration_point_weight(l,j) << std::endl;
+//        std::cout << "ipWeights_: " << orientation*quadrature_.integration_point_weight(l,j) << std::endl;
 
         ++scalar_index;
         lrscv_index += 2;
@@ -161,7 +161,7 @@ HigherOrderQuad2DSCS::set_interior_info()
   }
 
   //t-direction
-  std::cout << "### t-direction" << std::endl;
+//  std::cout << "### t-direction" << std::endl;
   for (int m = 0; m < linesPerDirection; ++m) {
     for (int l = 0; l < nodes1D_; ++l) {
 
@@ -186,12 +186,12 @@ HigherOrderQuad2DSCS::set_interior_info()
 
         intgLoc_(scalar_index, 0) = quadrature_.scs_loc(m);
         intgLoc_(scalar_index, 1) = quadrature_.integration_point_location(l,j);
-        std::cout << "intgLoc_[*,0]: " << quadrature_.scs_loc(m) << std::endl;
-        std::cout << "intgLoc_[*,1]: " << quadrature_.integration_point_location(l,j) << std::endl;
+//        std::cout << "intgLoc_[*,0]: " << quadrature_.scs_loc(m) << std::endl;
+//        std::cout << "intgLoc_[*,1]: " << quadrature_.integration_point_location(l,j) << std::endl;
 
         //compute the quadrature weight
         ipWeights_(scalar_index) = orientation*quadrature_.integration_point_weight(l,j);
-        std::cout << "ipWeights_: " << orientation*quadrature_.integration_point_weight(l,j) << std::endl;
+//        std::cout << "ipWeights_: " << orientation*quadrature_.integration_point_weight(l,j) << std::endl;
         
         ++scalar_index;
         lrscv_index += 2;
@@ -236,8 +236,8 @@ HigherOrderQuad2DSCS::set_boundary_info()
   for (int k = 0; k < nodes1D_; ++k) {
     const int nearNode = face_node_number(k,faceOrdinal);
     int oppNode = nodeMap(k, 1);
-    std::cout << "nearNode: " << nearNode << std::endl;
-    std::cout << "oppNode: " << oppNode << std::endl;
+//    std::cout << "nearNode: " << nearNode << std::endl;
+//    std::cout << "oppNode: " << oppNode << std::endl;
 
     for (int j = 0; j < quadrature_.num_quad(); ++j) {
       ipNodeMap_(scalar_index) = nearNode;
@@ -245,9 +245,9 @@ HigherOrderQuad2DSCS::set_boundary_info()
       oppFace_(scalar_index) = oppFaceIndex + faceToLine[faceOrdinal]*ipsPerFace_;
 
       intgExpFace_(scalar_index, 0) = intgLoc_(oppFace_(scalar_index), 0);
-      std::cout << "intgExpFace_(" << scalar_index << ", " << 0 << ") = " << "intgLoc_(oppFace_(" << scalar_index << "), " << 0 << "); = " << intgExpFace_(scalar_index, 0) << std::endl;
+//      std::cout << "intgExpFace_(" << scalar_index << ", " << 0 << ") = " << "intgLoc_(oppFace_(" << scalar_index << "), " << 0 << "); = " << intgExpFace_(scalar_index, 0) << std::endl;
       intgExpFace_(scalar_index, 1) = faceLoc[faceOrdinal];
-      std::cout << "intgExpFace_(" << scalar_index << ", " << 1 << ") = " << "faceLoc[" << faceOrdinal << "]; = " << intgExpFace_(scalar_index, 1) << std::endl;
+//      std::cout << "intgExpFace_(" << scalar_index << ", " << 1 << ") = " << "faceLoc[" << faceOrdinal << "]; = " << intgExpFace_(scalar_index, 1) << std::endl;
 
       ++scalar_index;
       ++oppFaceIndex;
@@ -371,9 +371,9 @@ HigherOrderQuad2DSCS::determinant(
     areav[ip * dim + 0] *= weight;
     areav[ip * dim + 1] *= weight;
     
-    std::cout << "IP: " << ip+1 << std::endl;
-    std::cout << "areav_x: " << areav[ip * dim + 0] << std::endl;
-    std::cout << "areav_y: " << areav[ip * dim + 1] << std::endl;
+//    std::cout << "IP: " << ip+1 << std::endl;
+//    std::cout << "areav_x: " << areav[ip * dim + 0] << std::endl;
+//    std::cout << "areav_y: " << areav[ip * dim + 1] << std::endl;
   }
 }
 
