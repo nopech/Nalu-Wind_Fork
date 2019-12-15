@@ -31,6 +31,7 @@ struct ElementDescription;
 class LagrangeBasis;
 class TensorProductQuadratureRule;
 
+// This is just copied from hex, not adapted to tet!
 class HigherOrderTetSCV final: public MasterElement
 {
 public:

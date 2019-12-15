@@ -107,7 +107,7 @@ HigherOrderTetSCS::HigherOrderTetSCS(
 #endif
 }
 
-std::vector<double> getCentroid(std::vector<ordinal_type>& nodeOrdinals, std::unique_ptr<ElementDescription>& eleDesc) {
+std::vector<double> HigherOrderTetSCS::getCentroid(std::vector<ordinal_type>& nodeOrdinals, std::unique_ptr<ElementDescription>& eleDesc) {
   const double length = (double)nodeOrdinals.size();
   const double factor = 1.0/length;
   std::vector<double> centroid(3, 0.0);
@@ -206,7 +206,7 @@ HigherOrderTetSCS::set_interior_info()
       // isoparametric mapping of the intgLoc of a isoparametric rectangle to the isoparametric tet
       int countHexSF = 0;
       for (int quadPoint = 0; quadPoint < numQuad_; ++quadPoint) { // for each ip at subsurf
-        std::cout << "new quadpoint" << std::endl;
+//        std::cout << "new quadpoint" << std::endl;
         
         int quadIndex = 0;
         if (quadPoint >= quadrature_.num_quad()) {
@@ -215,15 +215,15 @@ HigherOrderTetSCS::set_interior_info()
         else {
           quadIndex = quadPoint;
         }
-
+        
         // IP weight
-        int orientation = 1;
+        int orientation = left < right ? 1 : -1;
         ipWeights_(countIP) = orientation * quadrature_.weights(quadIndex) * quadrature_.weights(quadIndex);
 
         // left/right node mapping
         lrscv_(countIP, 0) = left;
         lrscv_(countIP, 1) = right;
-        std::cout << "left node: " << lrscv_(countIP, 0) << ", right node: " << lrscv_(countIP, 1) << std::endl;
+//        std::cout << "left node: " << lrscv_(countIP, 0) << ", right node: " << lrscv_(countIP, 1) << std::endl;
 
         for (int k = 0; k < 2; ++k) { // repeat 2 times because hex shape functions have 8 nodes but the subsurf has 4 nodes
           
@@ -238,7 +238,7 @@ HigherOrderTetSCS::set_interior_info()
           }
         }
         
-        std::cout << "isoCalc intgLoc: " << intgLoc_(countIP, 0) << ", " << intgLoc_(countIP, 1) << ", " << intgLoc_(countIP, 2) << std::endl;
+//        std::cout << "isoCalc intgLoc: " << intgLoc_(countIP, 0) << ", " << intgLoc_(countIP, 1) << ", " << intgLoc_(countIP, 2) << std::endl;
         countIP++;
         
       } // ip
@@ -332,7 +332,7 @@ HigherOrderTetSCS::set_boundary_info()
       std::vector<double> subedge3Centroid = getCentroid(subedgeOrdinals[2], desc);
         
       const int subsurfaceNodeLocIndex = face*numSubfacePerFace*numSubsurfacesPerSubface_*4 + subFace*numSubsurfacesPerSubface_*4;
-      std::cout << "subsurfaceNodeLocIndex = " << subsurfaceNodeLocIndex << std::endl;
+//      std::cout << "subsurfaceNodeLocIndex = " << subsurfaceNodeLocIndex << std::endl;
       
       // subsurface 1
       subsurfaceNodeLocBC_[subsurfaceNodeLocIndex + 0] = subfaceCentroid;
@@ -360,7 +360,7 @@ HigherOrderTetSCS::set_boundary_info()
         // isoparametric mapping of the intgLoc of a isoparametric rectangle to the isoparametric tet
         int countHexSF = 0;
         for (int quadPoint = 0; quadPoint < numQuad_; ++quadPoint) { // for each ip at subsurf
-          std::cout << "new quadpoint" << std::endl;
+//          std::cout << "new quadpoint" << std::endl;
           
           int quadIndex = 0;
           if (quadPoint >= quadrature_.num_quad()) {
@@ -379,7 +379,7 @@ HigherOrderTetSCS::set_boundary_info()
 
             for (int i = 0; i < 4; ++i) { // for each node of the subsurf
               const int subsurfaceNodeLocIndex = face*numSubfacePerFace*numSubsurfacesPerSubface_*4 + subFace*numSubsurfacesPerSubface_*4 + subSurf*4 + i;
-              std::cout << "second subsurfaceNodeLocIndex = " << subsurfaceNodeLocIndex << std::endl;
+//              std::cout << "second subsurfaceNodeLocIndex = " << subsurfaceNodeLocIndex << std::endl;
 
               for (int j = 0; j < 3; ++j) { // for each dimension
                 intgExpFace_(countIP, j) += (shape_fcnHex_[countHexSF] * subsurfaceNodeLocBC_[subsurfaceNodeLocIndex][j]);
@@ -389,7 +389,7 @@ HigherOrderTetSCS::set_boundary_info()
             }
           }
 
-          std::cout << "isoCalc intgExpFace: " << intgExpFace_(countIP, 0) << ", " << intgExpFace_(countIP, 1) << ", " << intgExpFace_(countIP, 2) << std::endl;
+//          std::cout << "isoCalc intgExpFace: " << intgExpFace_(countIP, 0) << ", " << intgExpFace_(countIP, 1) << ", " << intgExpFace_(countIP, 2) << std::endl;
           countIP++;
 
         } // ip

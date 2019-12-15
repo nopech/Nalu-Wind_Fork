@@ -915,6 +915,7 @@ TetSCS::interpolatePoint(
 
     result[i] = f1*psi1 + f2*xi + f3*eta + f4*zeta;
   }
+//  std::cout << "interpolatePoint = " << result[0] << ", " << result[1] << ", " << result[2] << std::endl;
 }
 
 //--------------------------------------------------------------------------

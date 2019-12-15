@@ -41,18 +41,28 @@ int poly_order_from_topology(int dimension, stk::topology topo)
   else if (!topo.is_super_topology()) {
     return 1;
   }
+  
+  int nodes1D = -1;
+  stk::topology baseTopo = ElementDescription::baseTopoMap[topo];
 
   if (topo.is_superedge()) {
     return (topo.num_nodes()-1);
   }
 
   if (topo.is_superface()) {
-    int nodes1D = std::sqrt(topo.num_nodes()+1);
-    return (nodes1D-1);
+    if (baseTopo == stk::topology::HEX_8) {
+      nodes1D = std::sqrt(topo.num_nodes()+1);
+    }
+    else if (baseTopo == stk::topology::TET_4) {
+      nodes1D = 0.5*( std::sqrt(8*topo.num_nodes()+1) - 1 ); // Triangular number solved for n
+    }
+    else {
+      ThrowErrorMsg("Topology not known to function poly_order_from_topology()");
+    }
+    
+    const int polynomial_order = nodes1D-1;
+    return polynomial_order;
   }
-  
-  int nodes1D = -1;
-  stk::topology baseTopo = ElementDescription::baseTopoMap[topo];
   
   if (baseTopo == stk::topology::QUAD_4_2D) {
     nodes1D = std::sqrt(topo.num_nodes()+1);
@@ -73,8 +83,8 @@ int poly_order_from_topology(int dimension, stk::topology topo)
     ThrowErrorMsg("Topology not known to function poly_order_from_topology()");
   }
   
-  std::cout << "no nodes = " << topo.num_nodes() << std::endl;
-  std::cout << "nodes1D = " << nodes1D << std::endl;
+//  std::cout << "no nodes = " << topo.num_nodes() << std::endl;
+//  std::cout << "nodes1D = " << nodes1D << std::endl;
   
   const int polynomial_order = nodes1D-1;
   return polynomial_order;

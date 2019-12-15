@@ -52,17 +52,17 @@ TetNElementDescription::TetNElementDescription(std::vector<double> in_nodeLocs)
   };
 
   baseFaceConnectivity = {
-      {1, 2, 3}, // front face
-      {0, 2, 3}, // right face
       {0, 1, 3}, // left face
-      {0, 1, 2}  // bottom face
+      {1, 2, 3}, // front face
+      {0, 3, 2}, // right face
+      {0, 2, 1}  // bottom face
   };
 
   baseFaceEdgeConnectivity = {
-      { 0, 5, 4}, // front face
-      { 2, 5, 3}, // right face
-      { 0, 3, 4}, // left face
-      { 0, 1, 2}  // bottom face
+      {0, 4, 3}, // left face
+      {1, 5, 4}, // front face
+      {2, 3, 5}, // right face
+      {2, 1, 0}  // bottom face
   };
 
   //first 4 nodes are base nodes.  Rest have been added.
@@ -144,9 +144,7 @@ void TetNElementDescription::set_face_node_connectivities()
 
   auto faceNodeOrdinals = face_node_ordinals();
 
-  // there's a disconnect between the exodus node ordering and face ordering,
-  // the first "new" face node is entered on face #4 (bottom face, 3 in C-numbering).
-  ordinal_type faceMap[4] = { 3, 1, 2, 3 };
+  ordinal_type faceMap[4] = { 0, 1, 2, 3 };
 
   auto beginIterator = faceNodeOrdinals.begin();
   for (const auto faceOrdinal : faceOrdinals) {
@@ -187,7 +185,7 @@ void TetNElementDescription::set_base_node_maps()
 //--------------------------------------------------------------------------
 void TetNElementDescription::set_boundary_node_mappings()
 {
-  // node mapping needs to be consistent with quad element's
+  // node mapping needs to be consistent with tri element's
   nodeMapBC = TriNElementDescription(nodeLocs1D).nodeMap;
 
   inverseNodeMap.resize(nodesPerElement);
@@ -230,7 +228,7 @@ void TetNElementDescription::set_tensor_product_node_mappings()
   for (int i = 0; i < nodes1D; ++i) {
     for (int j = 0; j < nodes1D-i; ++j) {
       for (int k = 0; k < nodes1D-i-j; ++k) {
-        std::cout << "node ordinal: " << node_map(i,j,k) << std::endl;
+//        std::cout << "node ordinal: " << node_map(i,j,k) << std::endl;
         inverseNodeMap[node_map(i,j,k)] = {i, j, k};
       }
     }
@@ -287,34 +285,35 @@ TetNElementDescription::set_side_node_ordinals()
     faceNodeMap.at(j).resize(nodesPerSide);
   }
   
-  if (polyOrder == 1) {
-    faceNodeMap.at(0) = baseFaceConnectivity[0]; // front
-    faceNodeMap.at(1) = baseFaceConnectivity[1]; // right
-    faceNodeMap.at(2) = baseFaceConnectivity[2]; // left
-    faceNodeMap.at(3) = baseFaceConnectivity[3]; // bottom
-  }
-  else if (polyOrder == 2) {
-//    faceNodeMap.at(0) = {1, 5, 2, 8, 9, 3}; // front
-//    faceNodeMap.at(1) = {2, 6, 0, 9, 7, 3}; // right
-//    faceNodeMap.at(2) = {0, 4, 1, 7, 8, 3}; // left
-//    faceNodeMap.at(3) = {0, 4, 1, 6, 5, 2}; // bottom
-    
-    faceNodeMap.at(0) = {1, 5, 2, 9, 3, 8}; // front
-    faceNodeMap.at(1) = {0, 6, 2, 9, 3, 7}; // right
-    faceNodeMap.at(2) = {0, 4, 1, 8, 3, 7}; // left
-    faceNodeMap.at(3) = {0, 4, 1, 5, 2, 6}; // bottom
-  }
-  else {
-    ThrowErrorMsg("faceNodeMap not defined for the chosen polyOrder");
-  }
-  
   sideOrdinalMap.resize(4);
   for (int face_ordinal = 0; face_ordinal < 4; ++face_ordinal) {
     sideOrdinalMap[face_ordinal].resize(nodesPerSide);
-    for (int j = 0; j < nodesPerSide; ++j) {
-      const auto& ords = inverseNodeMapBC[j];
-      sideOrdinalMap.at(face_ordinal).at(j) = faceNodeMap.at(face_ordinal).at(j);
-    }
+  }
+  
+  if (polyOrder == 1) {
+      faceNodeMap.at(0) = {0, 1, 3}; // left
+      faceNodeMap.at(1) = {1, 2, 3}; // front
+      faceNodeMap.at(2) = {0, 2, 3}; // right
+      faceNodeMap.at(3) = {0, 1, 2}; // bottom
+      
+      sideOrdinalMap.at(0) = {0, 1, 3}; // left
+      sideOrdinalMap.at(1) = {1, 2, 3}; // front
+      sideOrdinalMap.at(2) = {0, 3, 2}; // right
+      sideOrdinalMap.at(3) = {0, 2, 1}; // bottom
+  }
+  else if (polyOrder == 2) {
+      faceNodeMap.at(0) = {0, 4, 1, 7, 8, 3}; // left
+      faceNodeMap.at(1) = {1, 5, 2, 8, 9, 3}; // front
+      faceNodeMap.at(2) = {2, 6, 0, 9, 7, 3}; // right
+      faceNodeMap.at(3) = {1, 4, 0, 5, 6, 2}; // bottom
+      
+      sideOrdinalMap.at(0) = {0, 1, 3, 4, 8, 7}; // left
+      sideOrdinalMap.at(1) = {1, 2, 3, 5, 9, 8}; // front
+      sideOrdinalMap.at(2) = {0, 3, 2, 7, 9, 6}; // right
+      sideOrdinalMap.at(3) = {0, 2, 1, 6, 5, 4}; // bottom
+  }
+  else {
+    ThrowErrorMsg("faceNodeMap not defined for the chosen polyOrder");
   }
 }
 

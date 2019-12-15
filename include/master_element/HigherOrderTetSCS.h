@@ -47,6 +47,10 @@ public:
 
   KOKKOS_FUNCTION
   virtual ~HigherOrderTetSCS() {}
+  
+  std::vector<double> getCentroid(
+    std::vector<ordinal_type>& nodeOrdinals, 
+    std::unique_ptr<ElementDescription>& eleDesc);
 
   void shape_fcn(double *shpfc) final;
   

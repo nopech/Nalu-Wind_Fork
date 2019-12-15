@@ -121,7 +121,7 @@ HigherOrderQuad3DSCS::determinant(
   std::array<double,3> areaVector;
   int grad_offset = 0;
   int grad_inc = surfaceDimension_ * nodesPerElement_;
-
+  
   int vector_offset = 0;
   for (int ip = 0; ip < numIntPoints_; ++ip) {
     //compute area vector for this ip

@@ -13,6 +13,7 @@
 #include <element_promotion/TensorProductQuadratureRule.h>
 #include <element_promotion/LagrangeBasis.h>
 #include <element_promotion/NodeMapMaker.h>
+#include <element_promotion/ElementDescription.h>
 
 
 
@@ -27,6 +28,7 @@ namespace nalu{
 class LagrangeBasis;
 class TensorProductQuadratureRule;
 
+// copied from quad, not adapted to tri!
 class HigherOrderTri3DSCS final: public MasterElement
 {
 public:
@@ -40,8 +42,46 @@ public:
 
   KOKKOS_FUNCTION
   virtual ~HigherOrderTri3DSCS() {}
-
+  
+  std::vector<double> getCentroid(
+    std::vector<ordinal_type>& nodeOrdinals, 
+    std::unique_ptr<ElementDescription>& eleDesc);
+  
   void shape_fcn(double *shpfc) final;
+  
+  void quad_shape_fcn_p1( // used for the isoparametric mapping of the intgLoc on the scs
+    const int npts,
+    Kokkos::View<double**>& par_coord, 
+    double* shape_fcn);
+  
+  void tri_shape_fcn_p1(
+    const int npts,
+    Kokkos::View<double**>& par_coord, 
+    double* shape_fcn);
+  
+  void tri_shape_fcn_p2(
+    const int npts,
+    Kokkos::View<double**>& par_coord, 
+    double* shape_fcn);
+  
+  void tri_deriv_shape_fcn_p1(
+    const int npts, 
+    double *deriv);
+  
+  void tri_deriv_shape_fcn_p2(
+    const int npts,
+    Kokkos::View<double**>& par_coord, 
+    double *deriv);
+  
+  void pri_shape_fcn_p1(
+    const int npts,
+    Kokkos::View<double**>& par_coord, 
+    double* shape_fcn);
+  
+  void pri_shape_fcn_p2(
+    const int npts,
+    Kokkos::View<double**>& par_coord, 
+    double* shape_fcn);
 
   KOKKOS_FUNCTION virtual const int *  ipNodeMap(int ordinal = 0) const final;
 
@@ -51,7 +91,6 @@ public:
     double *areav,
     double * error );
 
-  const double* shape_functions() const { return shapeFunctionVals_.data(); }
   const double* ip_weights() const { return ipWeights_.data(); }
 
   virtual const double* integration_locations() const final {
@@ -72,12 +111,17 @@ private:
   const TensorProductQuadratureRule quadrature_;
   const Kokkos::View<int**> nodeMap;
   const int nodes1D_;
-
-  Kokkos::View<double**>  shapeFunctionVals_;
-  Kokkos::View<double***>  shapeDerivs_;
+  const int polyOrder_;
+  const int numQuad_;
+  const int numSubsurfacesPerSubelement_; // subsurfaces are the individual faces of the CV
+  int numSubelements_;
+  
   Kokkos::View<double*> ipWeights_;
+  Kokkos::View<double**> intgLocSurfIso_;
   Kokkos::View<double**> intgLoc_;
   Kokkos::View<int*> ipNodeMap_;
+  std::vector<std::vector<double>> subsurfaceNodeLoc_; // internal subsurfaces, defined with 4 points
+  std::vector<double> shape_fcnQuad_;
   int surfaceDimension_;
 };
 

@@ -9,6 +9,7 @@
 #include <element_promotion/PromotedPartHelper.h>
 #include <element_promotion/ElementDescription.h>
 #include <master_element/Hex8CVFEM.h>
+#include <master_element/Tet4CVFEM.h>
 #include <master_element/MasterElement.h>
 #include <master_element/Quad42DCVFEM.h>  
 #include <master_element/Tri32DCVFEM.h>
@@ -57,7 +58,7 @@ promote_elements(
   stk::mesh::Part* edgePart,
   stk::mesh::Part* facePart)
 {
-  // only quads and hexs implemented
+  // only quad, tri, tet and hex implemented
   std::pair<stk::mesh::PartVector, stk::mesh::PartVector> value;
   
   if (desc.baseTopo == stk::topology::QUAD_4_2D) {
@@ -329,7 +330,7 @@ promote_elements_tet(
 
   stk::mesh::PartVector promotedSideParts = create_boundary_elements(bulk, desc, partsToBePromoted);
 
-  set_coordinates_hex(bulk, desc, promotedElemParts, coordField);
+  set_coordinates_tet(bulk, desc, promotedElemParts, coordField);
 
   return std::make_pair(promotedElemParts, promotedSideParts);
 }
@@ -720,12 +721,15 @@ add_face_nodes_to_elem_connectivity(
 
     ThrowAssert(nodeIds.size() == ords.size());
     ThrowAssert(desc.newNodesPerFace == static_cast<int>(ords.size()));
-    ThrowAssert(desc.newNodesPerFace == newNodesPerEdge * newNodesPerEdge);
+    
+    if ( nodeIds.size() != 0 ) { // implemented this to make tet p2 elements work, they don't have face nodes
+      ThrowAssert(desc.newNodesPerFace == newNodesPerEdge * newNodesPerEdge); // this does not work for others than hex
 
-    for (int j = 0; j < newNodesPerEdge; ++j) {
-      for (int i = 0; i < newNodesPerEdge; ++i) {
-        allNodes.at(ords.at(i + j * newNodesPerEdge)) =
-            nodeIds.at(index_face_nodes(i, j, newNodesPerEdge, face_perm[face_ord]));
+      for (int j = 0; j < newNodesPerEdge; ++j) {
+        for (int i = 0; i < newNodesPerEdge; ++i) {
+          allNodes.at(ords.at(i + j * newNodesPerEdge)) =
+              nodeIds.at(index_face_nodes(i, j, newNodesPerEdge, face_perm[face_ord]));
+        }
       }
     }
   }
@@ -896,6 +900,58 @@ set_coordinates_hex(
     for (int ord : desc.promotedNodeOrdinals) {
       auto isoParCoords = desc.nodeLocs.at(ord);
       meHex.interpolatePoint(
+        desc.dimension,
+        isoParCoords.data(),
+        baseCoords.data(),
+        physCoords.data()
+      );
+      double* coords = stk::mesh::field_data(coordField, node_rels[ord]);
+
+      for (int d = 0; d < desc.dimension; ++d) {
+        coords[d] = physCoords[d];
+      }
+    }
+  });
+}
+//--------------------------------------------------------------------------
+void
+set_coordinates_tet(
+  const stk::mesh::BulkData& bulk,
+  const ElementDescription& desc,
+  const stk::mesh::PartVector& promotedPartVector,
+  const VectorFieldType& coordField)
+{
+  TetSCS meTet;
+  auto selector = stk::mesh::selectUnion(promotedPartVector);
+  const auto& elem_buckets = bulk.get_buckets(stk::topology::ELEM_RANK,
+    selector);
+
+  int baseNodes = desc.nodesInBaseElement;
+  std::vector<double> baseCoords(baseNodes * desc.dimension);
+  std::vector<double> physCoords(desc.dimension);
+
+  bucket_loop(elem_buckets,  [&](const stk::mesh::Entity elem) {
+    ThrowAssert(desc.nodesPerElement == static_cast<int>(bulk.num_nodes(elem)));
+    const stk::mesh::Entity* node_rels = bulk.begin_nodes(elem);
+
+    int baseIndex = 0;
+    for (int ord : desc.baseNodeOrdinals) {
+      double* coords = stk::mesh::field_data(coordField, node_rels[ord]);
+      for (int d = 0; d < desc.dimension; ++d) {
+        baseCoords[d * 4 + baseIndex] = coords[d];
+      }
+      ++baseIndex;
+    }
+
+    for (int ord : desc.promotedNodeOrdinals) {
+      auto isoParCoords = desc.nodeLocs.at(ord);
+//      std::cout << "### ordinal = " << ord << std::endl;
+//      std::cout << "isoParCoords = " << isoParCoords[0] << ", " << isoParCoords[1] << ", " << isoParCoords[3] << std::endl;
+//      std::cout << "baseCoords 1 = " << baseCoords[0] << ", " << baseCoords[4] << ", " << baseCoords[8] << std::endl;
+//      std::cout << "baseCoords 2 = " << baseCoords[1] << ", " << baseCoords[5] << ", " << baseCoords[9] << std::endl;
+//      std::cout << "baseCoords 3 = " << baseCoords[2] << ", " << baseCoords[6] << ", " << baseCoords[10] << std::endl;
+//      std::cout << "baseCoords 4 = " << baseCoords[3] << ", " << baseCoords[7] << ", " << baseCoords[11] << std::endl;
+      meTet.interpolatePoint(
         desc.dimension,
         isoParCoords.data(),
         baseCoords.data(),

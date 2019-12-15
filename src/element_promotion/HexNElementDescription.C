@@ -185,8 +185,8 @@ void HexNElementDescription::set_edge_node_connectivities()
   for (const auto edgeOrdinal : edgeOrdinals) {
     auto endIterator = beginIterator + newNodesPerEdge;
     edgeNodeConnectivities.insert({edgeMap[edgeOrdinal], std::vector<ordinal_type>{beginIterator,endIterator}});
-    std::cout << "### new edge" << std::endl;
-    std::cout << "edgeOrdinal = " << edgeOrdinal << std::endl;
+//    std::cout << "### new edge" << std::endl;
+//    std::cout << "edgeOrdinal = " << edgeOrdinal << std::endl;
 //    std::cout << "edgeMap[edgeOrdinal] = " << edgeMap[edgeOrdinal] << ", node 1 = " << edgeNodeConnectivities[edgeMap[edgeOrdinal]][0] << ", node 2 = " << edgeNodeConnectivities[edgeMap[edgeOrdinal]][1] << std::endl;
     beginIterator = endIterator;
   }

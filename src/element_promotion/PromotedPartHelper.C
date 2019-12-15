@@ -61,7 +61,7 @@ namespace nalu{
       NaluEnv::self().naluOutputP0()
                   << "Part "  << part.name()
                   << " has an invalid topology for promotion, " << topo.name()
-                  << "---only pure Hex/Quad meshes are currently supported." << std::endl;
+                  << "---only pure Hex/Quad and Tet/Tri meshes are currently supported." << std::endl;
 
       return false;
     }

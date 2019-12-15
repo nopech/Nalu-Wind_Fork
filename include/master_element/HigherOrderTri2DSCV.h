@@ -27,6 +27,7 @@ namespace nalu{
 class LagrangeBasis;
 class TensorProductQuadratureRule;
 
+// This is just copied from quad, not adapted to tri!
 class HigherOrderTri2DSCV final: public MasterElement
 {
 public:
