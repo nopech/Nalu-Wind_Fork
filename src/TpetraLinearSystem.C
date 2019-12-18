@@ -70,6 +70,10 @@
 #include <type_traits>
 
 #include <sstream>
+
+#include "stk_mesh/base/Types.hpp" 
+
+
 #define KK_MAP
 namespace sierra{
 namespace nalu{
@@ -403,6 +407,43 @@ void TpetraLinearSystem::buildConnectedNodeGraph(stk::mesh::EntityRank rank,
                                       & stk::mesh::selectUnion(parts)
                                       & !(realm_.get_inactive_selector());
 
+  
+  
+  
+  
+  //twin class workaround to access private data of bulkdata class from stk
+  struct bulkDataTwin { 
+      mutable stk::mesh::SelectorBucketMap m_selector_to_buckets_map;
+  };
+  
+  stk::mesh::SelectorBucketMap m_selector_to_buckets_map_two = reinterpret_cast<bulkDataTwin*>( &realm_.bulkData_ )->m_selector_to_buckets_map;
+  
+  
+  std::pair<stk::mesh::EntityRank, stk::mesh::Selector> search_item = std::make_pair(rank, s_owned);
+  stk::mesh::SelectorBucketMap::iterator fitr = m_selector_to_buckets_map_two.find(search_item);
+  if (fitr != m_selector_to_buckets_map_two.end()) {
+    stk::mesh::BucketVector const& rv = fitr->second;
+    stk::mesh::BucketVector returnvalone = rv;
+  }
+  else {
+    stk::mesh::BucketVector const& all_buckets_for_rank = realm_.bulkData_->buckets(rank); // lots of potential side effects! Need to happen before map insertion
+    std::pair<stk::mesh::SelectorBucketMap::iterator, bool> insert_rv =
+      m_selector_to_buckets_map_two.emplace(std::make_pair(rank, s_owned), stk::mesh::BucketVector() );
+    ThrowAssertMsg(insert_rv.second, "Should not have already been in map");
+    stk::mesh::BucketVector& map_buckets = insert_rv.first->second;
+    for (size_t i = 0, e = all_buckets_for_rank.size(); i < e; ++i) {
+      if (s_owned(*all_buckets_for_rank[i])) {
+        map_buckets.push_back(all_buckets_for_rank[i]);
+      }
+    }
+    stk::mesh::BucketVector returnvaltwo = reinterpret_cast<stk::mesh::BucketVector const&>(map_buckets);
+  }
+  
+  
+  bool test = s_owned.is_empty(stk::topology::ELEM_RANK);
+  
+  
+  
   stk::mesh::BucketVector const& buckets = realm_.get_buckets( rank, s_owned );
 
   for(size_t ib=0; ib<buckets.size(); ++ib) {
