@@ -62,14 +62,17 @@ Kokkos::View<int***> make_node_map_tet(int p, bool isPromoted)
 {
   const int nodes1D = p + 1;
   Kokkos::View<int***> node_map("node_map", nodes1D, nodes1D, nodes1D);
-//  auto desc = ElementDescription::create(3, p, stk::topology::TET_4);
-//  for (int i = 0; i < nodes1D; ++i) {
-//    for (int j = 0; j < nodes1D-i; ++j) {
-//      for (int k = 0; k < nodes1D-j-i; ++k) {
-//        node_map(k,j,i) = desc->node_map(i,j,k);
-//      }
-//    }
-//  }
+  auto desc = ElementDescription::create(3, p, stk::topology::TET_4);
+  int nodeCount = 0;
+  for (int k = 0; k < nodes1D; ++k) {
+    for (int j = 0; j < nodes1D-k; ++j) {
+      for (int i = 0; i < nodes1D-k-j; ++i) {
+        node_map(i,j,k) = desc->nodeMap.at(nodeCount);
+        std::cout << "tet: node_map(" << i << ", " << j << ", " << k << ") = " << desc->nodeMap.at(nodeCount) << std::endl;
+        nodeCount++;
+      }
+    }
+  }
   return node_map;
 }
 
@@ -93,12 +96,13 @@ Kokkos::View<int**> make_node_map_tri(int p)
   Kokkos::View<int**> node_map("node_map", nodes1D, nodes1D);
   auto desc = ElementDescription::create(2, p, stk::topology::TRI_3_2D);
   int nodeCount = 0;
-    for (int j = 0; j < nodes1D; ++j) {
-      for (int i = 0; i < nodes1D-j; ++i) {
-        node_map(j,i) = desc->nodeMap.at(nodeCount);
-        nodeCount++;
-      }
+  for (int j = 0; j < nodes1D; ++j) {
+    for (int i = 0; i < nodes1D-j; ++i) {
+      node_map(i,j) = desc->nodeMap.at(nodeCount);
+//      std::cout << "tri: node_map(" << i << ", " << j << ") = " << desc->nodeMap.at(nodeCount) << std::endl;
+      nodeCount++;
     }
+  }
   return node_map;
 }
 
@@ -122,14 +126,66 @@ Kokkos::View<int***> make_face_node_map_tet(int p)
 {
   const int nodes1D = p + 1;
   Kokkos::View<int***> face_node_map("face_node_map", 4, nodes1D, nodes1D);
-//  auto desc = ElementDescription::create(3, p, stk::topology::TET_4);
+  auto desc = ElementDescription::create(3, p, stk::topology::TET_4);
 //  for (int faceOrdinal = 0; faceOrdinal < 4; ++faceOrdinal) {
 //    for (int j = 0; j < nodes1D; ++j) {
-//      for (int i = 0; i < nodes1D-j; ++i) {
-//        face_node_map(faceOrdinal, j, i) = desc->faceNodeMap[faceOrdinal][(j*(nodes1D+1)-j*(j+1)/2) + i];
+//      for (int i = 0; i < nodes1D; ++i) {
+//        face_node_map(faceOrdinal, j, i) = desc->faceNodeMap[faceOrdinal][i + j * nodes1D];
+//        std::cout << "face_node_map(" << faceOrdinal << ", " << j << ", " << i << ") = " << face_node_map(faceOrdinal, j, i) << std::endl;
 //      }
 //    }
 //  }
+  
+  if (desc->polyOrder == 1) {
+      face_node_map(0, 0, 0) = 0; // left
+      face_node_map(0, 1, 0) = 1;
+      face_node_map(0, 0, 1) = 3;
+      
+      face_node_map(1, 0, 0) = 1; // front
+      face_node_map(1, 1, 0) = 2;
+      face_node_map(1, 0, 1) = 3;
+      
+      face_node_map(2, 0, 0) = 0; // right
+      face_node_map(2, 1, 0) = 2;
+      face_node_map(2, 0, 1) = 3;
+      
+      face_node_map(3, 0, 0) = 0; // bottom
+      face_node_map(3, 1, 0) = 1;
+      face_node_map(3, 0, 1) = 2;
+  }
+  else if (desc->polyOrder == 2) {
+      face_node_map(0, 0, 0) = 0; // left
+      face_node_map(0, 1, 0) = 4;
+      face_node_map(0, 2, 0) = 1;
+      face_node_map(0, 0, 1) = 7;
+      face_node_map(0, 1, 1) = 8;
+      face_node_map(0, 0, 2) = 3;
+      
+      face_node_map(1, 0, 0) = 1; // front
+      face_node_map(1, 1, 0) = 5;
+      face_node_map(1, 2, 0) = 2;
+      face_node_map(1, 0, 1) = 8;
+      face_node_map(1, 1, 1) = 9;
+      face_node_map(1, 0, 2) = 3;
+      
+      face_node_map(2, 0, 0) = 0; // right
+      face_node_map(2, 1, 0) = 6;
+      face_node_map(2, 2, 0) = 2;
+      face_node_map(2, 0, 1) = 7;
+      face_node_map(2, 1, 1) = 9;
+      face_node_map(2, 0, 2) = 3;
+      
+      face_node_map(3, 0, 0) = 0; // bottom
+      face_node_map(3, 1, 0) = 4;
+      face_node_map(3, 2, 0) = 1;
+      face_node_map(3, 0, 1) = 6;
+      face_node_map(3, 1, 1) = 5;
+      face_node_map(3, 0, 2) = 2;
+  }
+  else {
+    ThrowErrorMsg("faceNodeMap not defined for the chosen polyOrder");
+  }
+  
   return face_node_map;
 }
 
@@ -174,14 +230,14 @@ Kokkos::View<int**> make_side_node_ordinal_map_hex(int p)
 
 Kokkos::View<int**> make_side_node_ordinal_map_tet(int p)
 {
-  const int nodes1D = p + 1;
   auto desc = ElementDescription::create(3, p, stk::topology::TET_4);
   Kokkos::View<int**> face_node_map("side_node_ordinal_map", 4, desc->nodesPerSide);
-//  for (int faceOrdinal = 0; faceOrdinal < 4; ++faceOrdinal) {
-//    for (int i = 0; i < desc->nodesPerSide; ++i) {
-//      face_node_map(faceOrdinal, i) = desc->sideOrdinalMap[faceOrdinal][i];
-//    }
-//  }
+  for (int faceOrdinal = 0; faceOrdinal < 4; ++faceOrdinal) {
+    for (int i = 0; i < desc->nodesPerSide; ++i) {
+      face_node_map(faceOrdinal, i) = desc->sideOrdinalMap[faceOrdinal][i];
+    }
+  }
+  
   return face_node_map;
 }
 

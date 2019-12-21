@@ -403,44 +403,58 @@ void TpetraLinearSystem::buildConnectedNodeGraph(stk::mesh::EntityRank rank,
 {
   stk::mesh::MetaData & metaData = realm_.meta_data();
 
-  const stk::mesh::Selector s_owned = metaData.locally_owned_part()
-                                      & stk::mesh::selectUnion(parts)
-                                      & !(realm_.get_inactive_selector());
+//  const stk::mesh::Selector s_owned = metaData.locally_owned_part()
+//                                      & stk::mesh::selectUnion(parts)
+//                                      & !(realm_.get_inactive_selector());
 
   
   
   
   
+// Debugging code
+///////////////////////////////////////////////////////////////////////////////////////////////
   //twin class workaround to access private data of bulkdata class from stk
-  struct bulkDataTwin { 
-      mutable stk::mesh::SelectorBucketMap m_selector_to_buckets_map;
-  };
+//  class bulkDataTwin {
+//  public:
+//      stk::mesh::SelectorBucketMap m_selector_to_buckets_map;
+//  };
+//  
+//  stk::mesh::SelectorBucketMap m_selector_to_buckets_map_two = reinterpret_cast<bulkDataTwin*>( &realm_.bulk_data() )->m_selector_to_buckets_map;
+//  stk::mesh::BucketVector return_value;
+//  
+//  std::pair<stk::mesh::EntityRank, stk::mesh::Selector> search_item = std::make_pair(rank, s_owned);
+//  stk::mesh::SelectorBucketMap::iterator fitr = m_selector_to_buckets_map_two.find(search_item);
+//  if (fitr != m_selector_to_buckets_map_two.end()) {
+//    stk::mesh::BucketVector const& rv = fitr->second;
+//    return_value = rv;
+//  }
+//  else {
+//    stk::mesh::BucketVector const& all_buckets_for_rank = realm_.bulkData_->buckets(rank); // lots of potential side effects! Need to happen before map insertion
+//    std::pair<stk::mesh::SelectorBucketMap::iterator, bool> insert_rv =
+//      m_selector_to_buckets_map_two.emplace(std::make_pair(rank, s_owned), stk::mesh::BucketVector() );
+//    ThrowAssertMsg(insert_rv.second, "Should not have already been in map");
+//    stk::mesh::BucketVector& map_buckets = insert_rv.first->second;
+//    for (size_t i = 0, e = all_buckets_for_rank.size(); i < e; ++i) {
+//      if (s_owned(*all_buckets_for_rank[i])) {
+//        map_buckets.push_back(all_buckets_for_rank[i]);
+//      }
+//    }
+//    return_value = reinterpret_cast<stk::mesh::BucketVector const&>(map_buckets);
+//  }
+///////////////////////////////////////////////////////////////////////////////////////////////
   
-  stk::mesh::SelectorBucketMap m_selector_to_buckets_map_two = reinterpret_cast<bulkDataTwin*>( &realm_.bulkData_ )->m_selector_to_buckets_map;
+  
+//  bool test = s_owned.is_empty(stk::topology::ELEM_RANK);
+  
+  const stk::mesh::Selector s_owned = metaData.locally_owned_part()
+                                      & stk::mesh::selectUnion(parts)
+                                      & !(realm_.get_inactive_selector());
+  
+  std::ostringstream readableSelectorDescription;
+  readableSelectorDescription << s_owned;
+  std::cout << readableSelectorDescription.str().c_str() << std::endl;
   
   
-  std::pair<stk::mesh::EntityRank, stk::mesh::Selector> search_item = std::make_pair(rank, s_owned);
-  stk::mesh::SelectorBucketMap::iterator fitr = m_selector_to_buckets_map_two.find(search_item);
-  if (fitr != m_selector_to_buckets_map_two.end()) {
-    stk::mesh::BucketVector const& rv = fitr->second;
-    stk::mesh::BucketVector returnvalone = rv;
-  }
-  else {
-    stk::mesh::BucketVector const& all_buckets_for_rank = realm_.bulkData_->buckets(rank); // lots of potential side effects! Need to happen before map insertion
-    std::pair<stk::mesh::SelectorBucketMap::iterator, bool> insert_rv =
-      m_selector_to_buckets_map_two.emplace(std::make_pair(rank, s_owned), stk::mesh::BucketVector() );
-    ThrowAssertMsg(insert_rv.second, "Should not have already been in map");
-    stk::mesh::BucketVector& map_buckets = insert_rv.first->second;
-    for (size_t i = 0, e = all_buckets_for_rank.size(); i < e; ++i) {
-      if (s_owned(*all_buckets_for_rank[i])) {
-        map_buckets.push_back(all_buckets_for_rank[i]);
-      }
-    }
-    stk::mesh::BucketVector returnvaltwo = reinterpret_cast<stk::mesh::BucketVector const&>(map_buckets);
-  }
-  
-  
-  bool test = s_owned.is_empty(stk::topology::ELEM_RANK);
   
   
   

@@ -175,7 +175,6 @@ void TetNElementDescription::set_volume_node_connectivities()
 void TetNElementDescription::set_base_node_maps()
 {
   nodeMap.resize(nodesPerElement);
-  inverseNodeMap.resize(nodesPerElement);
 
   nmap(0        , 0        , 0        ) = 0;
   nmap(polyOrder, 0        , 0        ) = 1;
@@ -188,19 +187,12 @@ void TetNElementDescription::set_boundary_node_mappings()
   // node mapping needs to be consistent with tri element's
   nodeMapBC = TriNElementDescription(nodeLocs1D).nodeMap;
 
-  inverseNodeMap.resize(nodesPerElement);
-  for (int i = 0; i < nodes1D; ++i) {
-    for (int j = 0; j < nodes1D-i; ++j) {
-      for (int k = 0; k < nodes1D-i-j; ++k) {
-        inverseNodeMap[node_map(i,j,k)] = {i, j, k};
-      }
-    }
-  }
-
   inverseNodeMapBC.resize(nodesPerSide);
-  for (int i = 0; i < nodes1D; ++i) {
-    for (int j = 0; j < nodes1D-i; ++j) {
-      inverseNodeMapBC[node_map_bc(i,j)] = { i,j };
+  int nodeCount = 0;
+  for (int j = 0; j < nodes1D; ++j) {
+    for (int i = 0; i < nodes1D-j; ++i) {
+      inverseNodeMapBC[nodeMapBC.at(nodeCount)] = {i, j};
+      nodeCount++;
     }
   }
 }
@@ -211,12 +203,12 @@ void TetNElementDescription::set_tensor_product_node_mappings()
 
   if (polyOrder > 1) {
     if (polyOrder == 2) {
-      nmap(1, 0, 0) = 4;
-      nmap(1, 1, 0) = 5;
-      nmap(0, 1, 0) = 6;
-      nmap(0, 0, 1) = 7;
-      nmap(1, 0, 1) = 8;
-      nmap(0, 1, 1) = 9;
+      nodeMap[1] = 4;
+      nodeMap[3] = 6;
+      nodeMap[4] = 5;
+      nodeMap[6] = 7;
+      nodeMap[7] = 8;
+      nodeMap[8] = 9;
     }
     else {
       ThrowErrorMsg("node mapping not defined for the chosen polyOrder");
@@ -225,11 +217,12 @@ void TetNElementDescription::set_tensor_product_node_mappings()
 
   //inverse map
   inverseNodeMap.resize(nodesPerElement);
+  int nodeCount = 0;
   for (int i = 0; i < nodes1D; ++i) {
     for (int j = 0; j < nodes1D-i; ++j) {
       for (int k = 0; k < nodes1D-i-j; ++k) {
-//        std::cout << "node ordinal: " << node_map(i,j,k) << std::endl;
-        inverseNodeMap[node_map(i,j,k)] = {i, j, k};
+        inverseNodeMap[nodeMap.at(nodeCount)] = {k, j, i};
+        nodeCount++;
       }
     }
   }
@@ -298,14 +291,14 @@ TetNElementDescription::set_side_node_ordinals()
       
       sideOrdinalMap.at(0) = {0, 1, 3}; // left
       sideOrdinalMap.at(1) = {1, 2, 3}; // front
-      sideOrdinalMap.at(2) = {0, 3, 2}; // right
-      sideOrdinalMap.at(3) = {0, 2, 1}; // bottom
+      sideOrdinalMap.at(2) = {0, 2, 3}; // right
+      sideOrdinalMap.at(3) = {0, 1, 2}; // bottom
   }
   else if (polyOrder == 2) {
       faceNodeMap.at(0) = {0, 4, 1, 7, 8, 3}; // left
       faceNodeMap.at(1) = {1, 5, 2, 8, 9, 3}; // front
-      faceNodeMap.at(2) = {2, 6, 0, 9, 7, 3}; // right
-      faceNodeMap.at(3) = {1, 4, 0, 5, 6, 2}; // bottom
+      faceNodeMap.at(2) = {0, 6, 2, 7, 9, 3}; // right
+      faceNodeMap.at(3) = {0, 4, 1, 6, 5, 2}; // bottom
       
       sideOrdinalMap.at(0) = {0, 1, 3, 4, 8, 7}; // left
       sideOrdinalMap.at(1) = {1, 2, 3, 5, 9, 8}; // front

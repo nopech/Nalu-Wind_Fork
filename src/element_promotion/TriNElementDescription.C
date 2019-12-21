@@ -185,7 +185,7 @@ void TriNElementDescription::set_base_node_maps()
   //   o-----o-----o
   //  0      3       1
   //
-  // Node numbering: (P=2 element)
+  // Node numbering in node map: (P=2 element)
   //  5
   //   o
   //   ¦  \.

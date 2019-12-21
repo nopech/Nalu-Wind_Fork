@@ -6,7 +6,7 @@ find . -name "CMakeFiles" -exec rm -rf {} \;
 rm -f CMakeCache.txt
 
 cmake \
-  -DTrilinos_DIR:PATH=$(spack location -i trilinos) \
+  -DTrilinos_DIR:PATH=$(spack location -i trilinos@develop) \
   -DYAML_DIR:PATH=$(spack location -i yaml-cpp) \
   -DCMAKE_BUILD_TYPE=DEBUG \
   -DCMAKE_CXX_FLAGS:STRING="-Wall -g3" \
