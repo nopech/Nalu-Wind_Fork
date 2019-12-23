@@ -45,7 +45,7 @@ QuadNElementDescription::QuadNElementDescription(std::vector<double> in_nodeLocs
   nodesInBaseElement = baseTopo.num_nodes();
   nodesPerSubElement = baseTopo.num_nodes();
   baseEdgeConnectivity = { {0,1}, {1,2}, {2,3}, {3,0} };
-
+  
   //first 4 nodes are base nodes.  Rest have been added.
   baseNodeOrdinals = {0,1,2,3};
   promotedNodeOrdinals.resize(nodesPerElement-nodesInBaseElement);

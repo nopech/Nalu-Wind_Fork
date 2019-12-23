@@ -454,7 +454,7 @@ void TpetraLinearSystem::buildConnectedNodeGraph(stk::mesh::EntityRank rank,
   readableSelectorDescription << s_owned;
   std::cout << readableSelectorDescription.str().c_str() << std::endl;
   
-  
+  stk::mesh::BulkData & bulkData = realm_.bulk_data();
   
   
   

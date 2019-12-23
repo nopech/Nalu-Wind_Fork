@@ -257,9 +257,9 @@ namespace nalu{
     if (desc->baseTopo == stk::topology::TRI_3_2D) {
       endPoints = std::make_pair(0, 1);
     }
-    else if (desc->baseTopo == stk::topology::TET_4) {
-      endPoints = std::make_pair(0, 1);
-    }
+//    else if (desc->baseTopo == stk::topology::TET_4) {
+//      endPoints = std::make_pair(0, 1);
+//    }
     else {
       endPoints = std::make_pair(-1, 1);
     }

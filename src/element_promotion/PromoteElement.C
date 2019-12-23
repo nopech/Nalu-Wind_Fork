@@ -215,14 +215,63 @@ promote_elements_hex(
   stk::mesh::Selector edgeSelector = stk::mesh::selectUnion(base_edge_parts(partsToBePromoted));
   stk::mesh::Selector faceSelector = stk::mesh::selectUnion(base_face_parts(partsToBePromoted));
   stk::mesh::Selector volSelector  = stk::mesh::selectUnion(base_elem_parts(partsToBePromoted));
+  
+  
+  
+  
+  
+  
+  
+  std::ostringstream printEdgeSelector;
+  printEdgeSelector << edgeSelector;
+  std::cout << "edgeSelector = " << printEdgeSelector.str().c_str() << std::endl;
 
+  std::ostringstream printFaceSelector;
+  printFaceSelector << faceSelector;
+  std::cout << "faceSelector = " << printFaceSelector.str().c_str() << std::endl;
+
+  std::ostringstream printVolSelector;
+  printVolSelector << volSelector;
+  std::cout << "volSelector = " << printVolSelector.str().c_str() << std::endl;
+  
+  
+
+  
+  
+  
+  
+  
   stk::mesh::create_edges(bulk, volSelector, &edgePart);
   stk::mesh::create_faces(bulk, volSelector);
 
   stk::mesh::Selector allEdgeSelector = edgePart | edgeSelector;
   stk::mesh::Selector allFaceSelector = bulk.mesh_meta_data().get_topology_root_part(stk::topology::QUAD_4);
   stk::mesh::Selector newFaceSelector = (!faceSelector) & allFaceSelector;
+  
+  
+  
+  
+  
+  
+  
+  std::ostringstream printAllEdgeSelector;
+  printAllEdgeSelector << allEdgeSelector;
+  std::cout << "allEdgeSelector = " << printAllEdgeSelector.str().c_str() << std::endl;
 
+  std::ostringstream printAllFaceSelector;
+  printAllFaceSelector << allFaceSelector;
+  std::cout << "allFaceSelector = " << printAllFaceSelector.str().c_str() << std::endl;
+
+  std::ostringstream printNewFaceSelector;
+  printNewFaceSelector << newFaceSelector;
+  std::cout << "newFaceSelector = " << printNewFaceSelector.str().c_str() << std::endl;
+
+  
+  
+  
+  
+  
+  
   bulk.modification_begin();
 
   ConnectivityMap edgeNodeMap = connectivity_map_for_parent_rank(
@@ -283,6 +332,28 @@ promote_elements_tet(
   stk::mesh::Selector edgeSelector = stk::mesh::selectUnion(base_edge_parts(partsToBePromoted));
   stk::mesh::Selector faceSelector = stk::mesh::selectUnion(base_face_parts(partsToBePromoted));
   stk::mesh::Selector volSelector  = stk::mesh::selectUnion(base_elem_parts(partsToBePromoted));
+  
+  
+  
+  
+  
+  
+  std::ostringstream printEdgeSelector;
+  printEdgeSelector << edgeSelector;
+  std::cout << "edgeSelector = " << printEdgeSelector.str().c_str() << std::endl;
+
+  std::ostringstream printFaceSelector;
+  printFaceSelector << faceSelector;
+  std::cout << "faceSelector = " << printFaceSelector.str().c_str() << std::endl;
+
+  std::ostringstream printVolSelector;
+  printVolSelector << volSelector;
+  std::cout << "volSelector = " << printVolSelector.str().c_str() << std::endl;
+  
+  
+  
+  
+  
 
   stk::mesh::create_edges(bulk, volSelector, &edgePart);
   stk::mesh::create_faces(bulk, volSelector);
@@ -290,6 +361,30 @@ promote_elements_tet(
   stk::mesh::Selector allEdgeSelector = edgePart | edgeSelector;
   stk::mesh::Selector allFaceSelector = bulk.mesh_meta_data().get_topology_root_part(stk::topology::TRI_3);
   stk::mesh::Selector newFaceSelector = (!faceSelector) & allFaceSelector;
+  
+  
+  
+  
+  
+  
+  
+  std::ostringstream printAllEdgeSelector;
+  printAllEdgeSelector << allEdgeSelector;
+  std::cout << "allEdgeSelector = " << printAllEdgeSelector.str().c_str() << std::endl;
+
+  std::ostringstream printAllFaceSelector;
+  printAllFaceSelector << allFaceSelector;
+  std::cout << "allFaceSelector = " << printAllFaceSelector.str().c_str() << std::endl;
+
+  std::ostringstream printNewFaceSelector;
+  printNewFaceSelector << newFaceSelector;
+  std::cout << "newFaceSelector = " << printNewFaceSelector.str().c_str() << std::endl;
+  
+  
+  
+  
+  
+  
 
   bulk.modification_begin();
 
@@ -391,18 +486,27 @@ create_super_elements(
   const ConnectivityMap& faceConnectivity,
   const ConnectivityMap& volumeConnectivity)
 {
+  std::cout << std::endl;
+  std::cout << "####" << std::endl;
+  std::cout << "create_super_elements()" << std::endl;
+  std::cout << "####" << std::endl;
+  
   auto selector = stk::mesh::selectUnion(elemPartsToBePromoted);
   const auto& elem_buckets = bulk.get_buckets(stk::topology::ELEM_RANK, selector);
 
   stk::mesh::EntityIdVector elemIds;
   bulk.generate_new_ids(stk::topology::ELEM_RANK, count_entities(elem_buckets), elemIds);
 
+  std::cout << "nodesPerElement = " << desc.nodesPerElement << std::endl;
   stk::mesh::EntityIdVector elemConnectivity(desc.nodesPerElement, 0);
 
   stk::mesh::PartVector promotedElemParts;
   size_t idCounter = 0;
   for (auto* ip : elemPartsToBePromoted) {
     auto& superPart = *super_elem_part(*ip);
+    
+    std::cout << std::endl;
+    std::cout << "part name = " << ip->name() << std::endl;
 
     const auto& elem_part_buckets = bulk.get_buckets(stk::topology::ELEM_RANK, *ip);
     bucket_loop(elem_part_buckets, [&](const stk::mesh::Entity elem) {
@@ -412,7 +516,12 @@ create_super_elements(
       add_volume_nodes_to_elem_connectivity(bulk, desc, volumeConnectivity, elem, elemConnectivity);
 
       stk::mesh::declare_element(bulk, superPart, elemIds[idCounter], elemConnectivity);
-      ++idCounter;
+      
+      std::cout << "new element" << std::endl;
+      
+      
+      
+      ++idCounter;      
     });
     promotedElemParts.push_back(&superPart);
   }
@@ -426,6 +535,12 @@ create_boundary_elements(
   const ElementDescription& desc,
   const stk::mesh::PartVector& parts)
 {
+  std::cout << std::endl;
+  std::cout << "####" << std::endl;
+  std::cout << "create_boundary_elements()" << std::endl;
+  std::cout << "####" << std::endl;
+  
+  
   auto sideToSuperElemMap = exposed_side_to_super_elem_map(desc, bulk, parts);
 
   auto side_rank = bulk.mesh_meta_data().side_rank();
@@ -442,10 +557,15 @@ create_boundary_elements(
 
   bulk.modification_begin();
   for (const auto* ipart : parts) {
+    std::cout << std::endl;
+    std::cout << "part name = " << ipart->name() << std::endl;
     for (const auto* subset : ipart->subsets()) {
       if ( subset->topology().rank() == side_rank && !subset->topology().is_super_topology()) {
         soloFacePart[0] = super_subset_part(*subset);
         ThrowRequire(soloFacePart[0]  != nullptr);
+        
+        std::cout << "subset name = " << subset->name() << std::endl;
+        std::cout << "super subset name = " << soloFacePart[0]->name() << std::endl;
 
         const auto& buckets = bulk.get_buckets(side_rank, *subset);
         bucket_loop(buckets, [&](const stk::mesh::Entity side)  {
@@ -456,9 +576,14 @@ create_boundary_elements(
           const auto sideOrdinal = bulk.begin_element_ordinals(side)[0];
           const stk::mesh::Entity* elem_node_rels = bulk.begin_nodes(superElem);
           const auto& sideNodeOrdinals = desc.side_node_ordinals(sideOrdinal);
+          
+          std::cout << "nodesPerSide = " << desc.nodesPerSide << std::endl;
 
           for (int j = 0; j < desc.nodesPerSide; ++j) {
             bulk.declare_relation(superSide, elem_node_rels[sideNodeOrdinals[j]], j);
+            std::cout << "node: " << j << std::endl;
+            std::cout << "    sideNodeOrdinal = " << sideNodeOrdinals[j] << std::endl;
+            std::cout << "    elem_node_rels  = " << elem_node_rels[sideNodeOrdinals[j]] << std::endl;
           }
           bulk.declare_relation(superElem, superSide, sideOrdinal);
 
@@ -564,8 +689,14 @@ connectivity_map_for_parent_rank(
   const stk::mesh::Selector& selector,
   stk::topology::rank_t parent_rank)
 {
+  std::cout << std::endl;
+  std::cout << "connectivity_map_for_parent_rank" << std::endl;
+  std::cout << "rank = " << parent_rank << std::endl;
+  
   const auto& buckets = bulk.get_buckets(parent_rank, selector);
   size_t numNewNodes = count_entities(buckets) * numNewNodesOnTopo;
+  
+  std::cout << "numNewNodes = " << numNewNodes << std::endl;
 
   stk::mesh::EntityIdVector newNodeIds;
   bulk.generate_new_ids(stk::topology::NODE_RANK, numNewNodes, newNodeIds);
@@ -575,11 +706,23 @@ connectivity_map_for_parent_rank(
   bucket_loop(buckets, [&](stk::mesh::Entity entity) {
     auto endIterator = beginIterator + numNewNodesOnTopo;
     map.insert({entity, stk::mesh::EntityIdVector{beginIterator, endIterator}});
+    
+    std::cout << "new map entry" << std::endl;
+    std::cout << "    entity = " << entity << std::endl;
+    std::cout << "    EntityIdVector = {";
+    printf("%" PRIu64, beginIterator);
+    std::cout << ", ";
+    printf("%" PRIu64, endIterator);
+    std::cout << "}" << std::endl;
+    
     beginIterator = endIterator;
   });
 
   perform_parallel_consolidation_of_node_ids(bulk, map);
   create_nodes_for_connectivity_map(bulk, map);
+  
+  std::cout << " connvectivity map size = " << map.size() << std::endl;
+  
   return map;
 }
 //--------------------------------------------------------------------------
@@ -590,9 +733,17 @@ add_base_nodes_to_elem_connectivity(
   const stk::mesh::Entity elem,
   stk::mesh::EntityIdVector& allNodes)
 {
+  
+  std::cout << std::endl;
+  std::cout << "add_base_nodes_to_elem_connectivity" << std::endl;
+  
   const auto* base_elem_rels = bulk.begin_nodes(elem);
   for (int j = 0; j < desc.nodesInBaseElement; ++j) {
     allNodes[j] = bulk.identifier(base_elem_rels[desc.baseNodeOrdinals.at(j)]);
+    
+    std::cout << "baseNodeOrdinal = " << desc.baseNodeOrdinals.at(j) << std::endl;
+    std::cout << "    base_elem_rel = " << base_elem_rels[desc.baseNodeOrdinals.at(j)] << std::endl;
+    std::cout << "    bulk.identifier = " << allNodes[j] << std::endl;
   }
 }
 //--------------------------------------------------------------------------
@@ -685,14 +836,23 @@ add_edge_nodes_to_elem_connectivity(
   const stk::mesh::Entity elem,
   stk::mesh::EntityIdVector& allNodes)
 {
+  std::cout << std::endl;
+  std::cout << "add_edge_nodes_to_elem_connectivity" << std::endl;
+  
   const auto* edge_rels = bulk.begin_edges(elem);
   const auto* edge_ords = bulk.begin_edge_ordinals(elem);
   const auto* perm = bulk.begin_edge_permutations(elem);
   int newNodesPerEdge = desc.newNodesPerEdge;
+  
+  std::cout << "newNodesPerEdge = " << newNodesPerEdge << std::endl;
+  
   for (unsigned edge_index = 0; edge_index < bulk.num_edges(elem); ++edge_index) {
     int edge_ord = edge_ords[edge_index];
     const stk::mesh::EntityIdVector& nodeIds = edgeConnectivity.at(edge_rels[edge_ord]);
     const std::vector<int>& ords = desc.edgeNodeConnectivities.at(edge_ord);
+    
+    std::cout << "edge_ord = " << edge_ord << std::endl;
+    
 
     ThrowAssert(nodeIds.size() == ords.size());
     ThrowAssert(static_cast<int>(ords.size()) == newNodesPerEdge);
@@ -710,10 +870,16 @@ add_face_nodes_to_elem_connectivity(
   const stk::mesh::Entity elem,
   stk::mesh::EntityIdVector& allNodes)
 {
+  std::cout << std::endl;
+  std::cout << "add_face_nodes_to_elem_connectivity" << std::endl;
+
   const auto* face_rels = bulk.begin_faces(elem);
   const auto* face_ords = bulk.begin_edge_ordinals(elem);
   const auto* face_perm = bulk.begin_face_permutations(elem);
   int newNodesPerEdge = desc.newNodesPerEdge;
+  
+  std::cout << "newNodesPerEdge = " << newNodesPerEdge << std::endl;
+  
   for (unsigned face_index = 0; face_index < bulk.num_faces(elem); ++face_index) {
     int face_ord = face_ords[face_index];
     const stk::mesh::EntityIdVector& nodeIds = faceConnectivity.at(face_rels[face_ord]);
@@ -721,6 +887,8 @@ add_face_nodes_to_elem_connectivity(
 
     ThrowAssert(nodeIds.size() == ords.size());
     ThrowAssert(desc.newNodesPerFace == static_cast<int>(ords.size()));
+    
+    std::cout << "newNodesPerFace = " << desc.newNodesPerFace << std::endl;
     
     if ( nodeIds.size() > 0 ) { // implemented this to make tet p2 elements work, they don't have face nodes
       ThrowAssert(desc.newNodesPerFace == newNodesPerEdge * newNodesPerEdge); // this does not work for others than hex
@@ -743,6 +911,9 @@ add_volume_nodes_to_elem_connectivity(
   const stk::mesh::Entity elem,
   stk::mesh::EntityIdVector& allNodes)
 {
+  std::cout << std::endl;
+  std::cout << "add_volume_nodes_to_elem_connectivity" << std::endl;
+  
   const auto& nodes = volumeConnectivity.at(elem);
   const auto& ords = desc.volumeNodeConnectivities.at(0);
   ThrowAssert(nodes.size() == ords.size());
@@ -789,6 +960,9 @@ destroy_entities(
     ThrowRequire(bulk.is_valid(entity));
     if (bulk.bucket(entity).owned()) {
       bool destroyed = destroy_entity(bulk, entity);
+      
+      std::cout << "destroyed entity " << entity << std::endl;
+      
       ThrowRequireMsg(destroyed, "Failed to destroy entity: " + std::to_string(bulk.identifier(entity)));
     }
   }
@@ -976,6 +1150,10 @@ make_base_nodes_to_elem_map_at_boundary(
    * generates a map between a (sorted) vector of the element's
    * node ids to the element itself
    */
+  
+  std::cout << std::endl;
+  std::cout << "make_base_nodes_to_elem_map_at_boundary" << std::endl;
+  
   const auto& baseElemSideBuckets = mesh.get_buckets(
     mesh.mesh_meta_data().side_rank(),
     stk::mesh::selectUnion(meshParts)
@@ -990,9 +1168,19 @@ make_base_nodes_to_elem_map_at_boundary(
 
     const auto* node_rels = mesh.begin_nodes(parent_elem);
     ThrowAssert(mesh.num_nodes(parent_elem) == parents.size());
+    
+    std::cout << "nodesInBaseElement = " << desc.nodesInBaseElement << std::endl;
 
     for (int j = 0; j < desc.nodesInBaseElement; ++j) {
       parents.at(j) = mesh.identifier(node_rels[j]);
+      
+      
+      std::cout << "    node_rel = " << node_rels[j] << std::endl;
+      std::cout << "    parents[" << j << "] = ";
+      printf("%" PRIu64, mesh.identifier(node_rels[j]));
+      std::cout << std::endl;
+      
+      
     }
     std::sort(parents.begin(), parents.end());
     nodesToElemMap.insert({parents, parent_elem});
@@ -1010,6 +1198,9 @@ exposed_side_to_super_elem_map(
    * Generates a map between each exposed face and the super-element
    * notionally attached to that exposed face.
    */
+  
+  std::cout << std::endl;
+  std::cout << "exposed_side_to_super_elem_map" << std::endl;
   ThrowRequire(part_vector_is_valid_and_nonempty(super_elem_part_vector(base_elem_mesh_parts)));
 
   const auto& superElemBuckets = bulk.get_buckets(
@@ -1024,6 +1215,8 @@ exposed_side_to_super_elem_map(
 
   const auto baseNumNodes = desc.nodesInBaseElement;
   std::vector<stk::mesh::EntityId> parents(baseNumNodes);
+  
+  std::cout << "nodesInBaseElement = " << baseNumNodes << std::endl;
 
   bucket_loop(superElemBuckets, [&](stk::mesh::Entity superElem) {
     const auto* node_rels = bulk.begin_nodes(superElem);
@@ -1033,6 +1226,14 @@ exposed_side_to_super_elem_map(
     // first in the elem node relations still holds
     for (int j = 0; j < baseNumNodes ; ++j) {
       parents.at(j) = bulk.identifier(node_rels[desc.baseNodeOrdinals.at(j)]);
+      
+      std::cout << "    baseNodeOrdinal = " << desc.baseNodeOrdinals.at(j) << std::endl;
+      std::cout << "    node_rel = " << node_rels[desc.baseNodeOrdinals.at(j)] << std::endl;
+      std::cout << "    parents[" << j << "] = ";
+      printf("%" PRIu64, bulk.identifier(node_rels[desc.baseNodeOrdinals.at(j)]));
+      std::cout << std::endl;
+      
+      
     }
     std::sort(parents.begin(), parents.end());
 

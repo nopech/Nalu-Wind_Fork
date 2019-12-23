@@ -32,6 +32,7 @@ namespace nalu {
 TetNElementDescription::TetNElementDescription(std::vector<double> in_nodeLocs)
 : ElementDescription()
 {
+  nodeLocs1Dorig = in_nodeLocs;
   nodeLocs1D = scaleNodeLocs(in_nodeLocs);
 
   baseTopo = stk::topology::TET_4;
@@ -45,7 +46,7 @@ TetNElementDescription::TetNElementDescription(std::vector<double> in_nodeLocs)
   numBoundaries = numFaces;
   nodesInBaseElement = baseTopo.num_nodes();
   nodesPerSubElement = nodesInBaseElement;
-
+  
   baseEdgeConnectivity = {
       {0,1}, {1,2}, {2,0}, // bottom face
       {0,3}, {1,3}, {2,3}  // bottom-to-top
@@ -185,7 +186,7 @@ void TetNElementDescription::set_base_node_maps()
 void TetNElementDescription::set_boundary_node_mappings()
 {
   // node mapping needs to be consistent with tri element's
-  nodeMapBC = TriNElementDescription(nodeLocs1D).nodeMap;
+  nodeMapBC = TriNElementDescription(nodeLocs1Dorig).nodeMap;
 
   inverseNodeMapBC.resize(nodesPerSide);
   int nodeCount = 0;
@@ -262,7 +263,7 @@ TetNElementDescription::set_subelement_connectivites()
     subElementConnectivity[3] = {7, 8, 9, 3};
     subElementConnectivity[4] = {7, 8, 4, 5};
     subElementConnectivity[5] = {7, 8, 9, 5};
-    subElementConnectivity[6] = {7, 9, 5, 6};
+    subElementConnectivity[6] = {7, 9, 6, 5};
     subElementConnectivity[7] = {4, 5, 6, 7};
   }
   else {

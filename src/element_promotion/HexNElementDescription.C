@@ -116,7 +116,7 @@ HexNElementDescription::HexNElementDescription(std::vector<double> in_nodeLocs)
   numBoundaries = numFaces;
   nodesInBaseElement = baseTopo.num_nodes();
   nodesPerSubElement = nodesInBaseElement;
-
+  
   baseEdgeConnectivity = {
       {0,1}, {1,2}, {2,3}, {3,0}, // bottom face
       {4,5}, {5,6}, {6,7}, {7,4}, // top face

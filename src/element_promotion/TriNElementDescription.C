@@ -45,7 +45,7 @@ TriNElementDescription::TriNElementDescription(std::vector<double> in_nodeLocs)
   nodesInBaseElement = baseTopo.num_nodes();
   nodesPerSubElement = baseTopo.num_nodes();
   baseEdgeConnectivity = { {0,1}, {1,2}, {2,0} };
-
+  
   //first 3 nodes are base nodes.  Rest have been added.
   baseNodeOrdinals = {0,1,2};
   promotedNodeOrdinals.resize(nodesPerElement-nodesInBaseElement);
