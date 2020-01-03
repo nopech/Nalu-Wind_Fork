@@ -48,7 +48,7 @@ HigherOrderTri3DSCS::HigherOrderTri3DSCS(
   polyOrder_(nodes1D_-1)
 {
   surfaceDimension_ = 2;
-  MasterElement::nDim_ = 3;
+  nDim_ = 3;
   nodesPerElement_ = 0.5*(nodes1D_*(nodes1D_+1)); // triangular number
   
     // generate hex shape functions used for the isoparametric mapping intgLoc on subsurfaces (scs)
@@ -120,8 +120,8 @@ HigherOrderTri3DSCS::set_interior_info()
   ipNodeMap_= Kokkos::View<int*>("ipNodeMap_", numIntPoints_);
   intgLoc_ = Kokkos::View<double**>("integration_point_location", numIntPoints_, 2);
   ipWeights_ = Kokkos::View<double*>("ip_weight", numIntPoints_);
-  subsurfaceNodeLoc_.resize(numSubelements_ * numSubsurfacesPerSubelement_ * 4, std::vector<double>(3));
-  int subcontrol_vol_ord;
+  subsurfaceNodeLoc_.resize(numSubelements_ * numSubsurfacesPerSubelement_ * 4, std::vector<double>(2));
+  ordinal_type subcontrol_vol_ord;
   
   int countIP = 0;
   
@@ -169,7 +169,7 @@ HigherOrderTri3DSCS::set_interior_info()
         
         // compute subsurface node location and save it for later usage in areav computation
         std::vector<double> centroid = getCentroid(centroidDefiningOrdinals, desc);
-        std::vector<double> nodeLoc(3, 0.0);
+        std::vector<double> nodeLoc(2, 0.0);
         nodeLoc[0] = centroid[0];
         nodeLoc[1] = centroid[1];
         
@@ -181,24 +181,22 @@ HigherOrderTri3DSCS::set_interior_info()
 
       // isoparametric mapping of the intgLoc of a isoparametric rectangle to the isoparametric tri
       int countQuadSF = 0;
+      int quadIndex = 0;
       for (int quadPoint = 0; quadPoint < numQuad_; ++quadPoint) { // for each ip at subsurf
 //        std::cout << "new quadpoint" << std::endl;
         
         //sub-control volume association
         ipNodeMap_(countIP) = subcontrol_vol_ord;
-        
-        int quadIndex = 0;
-        if (quadPoint >= quadrature_.num_quad()) {
-          quadIndex = quadPoint - quadrature_.num_quad();
-        }
-        else {
-          quadIndex = quadPoint;
+
+        if (quadIndex >= quadrature_.num_quad()) {
+          quadIndex = 0;
         }
 
         // IP weight
         int orientation = 1;
         ipWeights_(countIP) = orientation * quadrature_.weights(quadIndex) * quadrature_.weights(quadIndex);
           
+          // isoparametric mapping
           for (int i = 0; i < 4; ++i) { // for each node of the subsurf
             int subsurfaceNodeLocIndex = 12*subElement + 4*subSurf + i;
             
@@ -211,6 +209,7 @@ HigherOrderTri3DSCS::set_interior_info()
         
 //        std::cout << "isoCalc intgLoc: " << intgLoc_(countIP, 0) << ", " << intgLoc_(countIP, 1) << std::endl;
         countIP++;
+        quadIndex++;
         
       } // ip
     } // subSurf
@@ -228,10 +227,10 @@ HigherOrderTri3DSCS::quad_shape_fcn_p1(
     const double oneHalf = 1.0/2.0;
     const double xi   = par_coord(j, 0);
     const double eta  = par_coord(j, 1);
-    shape_fcn[0 + fourj] = oneHalf*(1-xi)*oneHalf*(1-eta);
-    shape_fcn[1 + fourj] = oneHalf*(1+xi)*oneHalf*(1-eta);
-    shape_fcn[2 + fourj] = oneHalf*(1+xi)*oneHalf*(1+eta);
-    shape_fcn[3 + fourj] = oneHalf*(1-xi)*oneHalf*(1+eta);
+    shape_fcn[0 + fourj] = oneHalf*(1.0-xi)*oneHalf*(1.0-eta);
+    shape_fcn[1 + fourj] = oneHalf*(1.0+xi)*oneHalf*(1.0-eta);
+    shape_fcn[2 + fourj] = oneHalf*(1.0+xi)*oneHalf*(1.0+eta);
+    shape_fcn[3 + fourj] = oneHalf*(1.0-xi)*oneHalf*(1.0+eta);
   }
 }
 
@@ -274,11 +273,11 @@ void HigherOrderTri3DSCS::tri_shape_fcn_p2(
     const double xi = par_coord(j, 0);
     const double eta = par_coord(j, 1);
     shape_fcn[0 + sixj] = (1.0-xi-eta)*(1.0-2.0*xi-2.0*eta);
-    shape_fcn[1 + sixj] = xi*(2.0*xi-1);
-    shape_fcn[2 + sixj] = eta*(2.0*eta-1);
-    shape_fcn[3 + sixj] = 4.0*xi*(1-xi-eta);
+    shape_fcn[1 + sixj] = xi*(2.0*xi-1.0);
+    shape_fcn[2 + sixj] = eta*(2.0*eta-1.0);
+    shape_fcn[3 + sixj] = 4.0*xi*(1.0-xi-eta);
     shape_fcn[4 + sixj] = 4.0*xi*eta;
-    shape_fcn[5 + sixj] = 4.0*eta*(1-xi-eta);
+    shape_fcn[5 + sixj] = 4.0*eta*(1.0-xi-eta);
   }
 }
 
@@ -317,7 +316,7 @@ void HigherOrderTri3DSCS::tri_deriv_shape_fcn_p2(
     deriv[8 + twelvej] =   4.0*eta;                // IP j, Node 4, dxi
     deriv[9 + twelvej] =   4.0*xi;                 // IP j, Node 4, deta
     deriv[10 + twelvej] = -4.0*eta;                // IP j, Node 5, dxi
-    deriv[11 + twelvej] = -4.0*(2.0*eta+xi-1);     // IP j, Node 5, deta
+    deriv[11 + twelvej] = -4.0*(2.0*eta+xi-1.0);     // IP j, Node 5, deta
   }
 }
 
@@ -331,12 +330,12 @@ void HigherOrderTri3DSCS::pri_shape_fcn_p1(
     const double xi = par_coord(j, 0);
     const double eta = par_coord(j, 1);
     const double zeta = par_coord(j, 2);
-    shape_fcn[0 + sixj] = 0.5*(1-xi-eta)*(1-zeta);
-    shape_fcn[1 + sixj] = 0.5*xi*(1-zeta);
-    shape_fcn[2 + sixj] = 0.5*eta*(1-zeta);
-    shape_fcn[3 + sixj] = 0.5*(1-xi-eta)*(1+zeta);
-    shape_fcn[4 + sixj] = 0.5*xi*(1+zeta);
-    shape_fcn[5 + sixj] = 0.5*eta*(1+zeta);
+    shape_fcn[0 + sixj] = 0.5*(1.0-xi-eta)*(1.0-zeta);
+    shape_fcn[1 + sixj] = 0.5*xi*(1.0-zeta);
+    shape_fcn[2 + sixj] = 0.5*eta*(1.0-zeta);
+    shape_fcn[3 + sixj] = 0.5*(1.0-xi-eta)*(1.0+zeta);
+    shape_fcn[4 + sixj] = 0.5*xi*(1.0+zeta);
+    shape_fcn[5 + sixj] = 0.5*eta*(1.0+zeta);
   }
 }
 
@@ -350,18 +349,18 @@ void HigherOrderTri3DSCS::pri_shape_fcn_p2(
     const double xi = par_coord(j, 0);
     const double eta = par_coord(j, 1);
     const double zeta = par_coord(j, 2);
-    shape_fcn[0  + twelvej] = 0.5*(1-xi-eta)*(1-zeta);
-    shape_fcn[1  + twelvej] = 0.5*xi*(1-zeta);
-    shape_fcn[2  + twelvej] = 0.5*eta*(1-zeta);
-    shape_fcn[3  + twelvej] = 0.5*(1-xi-eta)*(1+zeta);
-    shape_fcn[4  + twelvej] = 0.5*xi*(1+zeta);
-    shape_fcn[5  + twelvej] = 0.5*eta*(1+zeta);
-    shape_fcn[6  + twelvej] = 2.0*xi*(1-xi-eta)*(1-zeta);
-    shape_fcn[7  + twelvej] = 2.0*xi*eta*(1-zeta);
-    shape_fcn[8  + twelvej] = 2.0*eta*(1-xi-eta)*(1-zeta);
-    shape_fcn[9  + twelvej] = 2.0*xi*(1-xi-eta)*(1+zeta);
-    shape_fcn[10 + twelvej] = 2.0*xi*eta*(1+zeta);
-    shape_fcn[11 + twelvej] = 2*eta*(1-xi-eta)*(1+zeta);
+    shape_fcn[0  + twelvej] = 0.5*(1.0-xi-eta)*(1.0-zeta);
+    shape_fcn[1  + twelvej] = 0.5*xi*(1.0-zeta);
+    shape_fcn[2  + twelvej] = 0.5*eta*(1.0-zeta);
+    shape_fcn[3  + twelvej] = 0.5*(1.0-xi-eta)*(1.0+zeta);
+    shape_fcn[4  + twelvej] = 0.5*xi*(1.0+zeta);
+    shape_fcn[5  + twelvej] = 0.5*eta*(1.0+zeta);
+    shape_fcn[6  + twelvej] = 2.0*xi*(1.0-xi-eta)*(1.0-zeta);
+    shape_fcn[7  + twelvej] = 2.0*xi*eta*(1.0-zeta);
+    shape_fcn[8  + twelvej] = 2.0*eta*(1.0-xi-eta)*(1.0-zeta);
+    shape_fcn[9  + twelvej] = 2.0*xi*(1.0-xi-eta)*(1.0+zeta);
+    shape_fcn[10 + twelvej] = 2.0*xi*eta*(1.0+zeta);
+    shape_fcn[11 + twelvej] = 2.0*eta*(1.0-xi-eta)*(1.0+zeta);
   }
 }
 
@@ -450,43 +449,6 @@ HigherOrderTri3DSCS::determinant(
     
     offset += numQuad_;
   }
-}
-
-void
-HigherOrderTri3DSCS::area_vector(
-  const double* POINTER_RESTRICT elemNodalCoords,
-  const double* POINTER_RESTRICT shapeDeriv,
-  std::array<double,3>& areaVector) const
-{
-//  // return the normal area vector given shape derivatives dnds OR dndt
-//  double dx_ds1 = 0.0; double dy_ds1 = 0.0; double dz_ds1 = 0.0;
-//  double dx_ds2 = 0.0; double dy_ds2 = 0.0; double dz_ds2 = 0.0;
-//
-//  for (int node = 0; node < nodesPerElement_; ++node) {
-//    const int vector_offset = nDim_ * node;
-//    const int surface_vector_offset = surfaceDimension_ * node;
-//
-//    const double xCoord = elemNodalCoords[vector_offset+0];
-//    const double yCoord = elemNodalCoords[vector_offset+1];
-//    const double zCoord = elemNodalCoords[vector_offset+2];
-//
-//    const double dn_ds1 = shapeDeriv[surface_vector_offset+0];
-//    const double dn_ds2 = shapeDeriv[surface_vector_offset+1];
-//
-//    dx_ds1 += dn_ds1 * xCoord;
-//    dx_ds2 += dn_ds2 * xCoord;
-//
-//    dy_ds1 += dn_ds1 * yCoord;
-//    dy_ds2 += dn_ds2 * yCoord;
-//
-//    dz_ds1 += dn_ds1 * zCoord;
-//    dz_ds2 += dn_ds2 * zCoord;
-//  }
-//
-//  //cross product
-//  areaVector[0] = dy_ds1 * dz_ds2 - dz_ds1 * dy_ds2;
-//  areaVector[1] = dz_ds1 * dx_ds2 - dx_ds1 * dz_ds2;
-//  areaVector[2] = dx_ds1 * dy_ds2 - dy_ds1 * dx_ds2;
 }
 
 }  // namespace nalu

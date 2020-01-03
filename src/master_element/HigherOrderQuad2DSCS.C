@@ -152,7 +152,7 @@ HigherOrderQuad2DSCS::set_interior_info()
 
         //compute the quadrature weight
         ipWeights_(scalar_index) = orientation*quadrature_.integration_point_weight(l,j);
-//        std::cout << "ipWeights_: " << orientation*quadrature_.integration_point_weight(l,j) << std::endl;
+        std::cout << "ipWeights_: " << orientation*quadrature_.integration_point_weight(l,j) << std::endl;
 
         ++scalar_index;
         lrscv_index += 2;
@@ -368,12 +368,18 @@ HigherOrderQuad2DSCS::determinant(
   for (int ip = 0; ip < numIntPoints_; ++ip) {
 
     double weight = ipWeights_(ip);
+    
+//    std::cout << std::endl;
+//    std::cout << "ipWeight = " << weight << std::endl;
+//    std::cout << "areav_x = " << areav[ip * dim + 0] << std::endl;
+//    std::cout << "areav_y = " << areav[ip * dim + 1] << std::endl;
+    
     areav[ip * dim + 0] *= weight;
     areav[ip * dim + 1] *= weight;
     
-//    std::cout << "IP: " << ip+1 << std::endl;
-//    std::cout << "areav_x: " << areav[ip * dim + 0] << std::endl;
-//    std::cout << "areav_y: " << areav[ip * dim + 1] << std::endl;
+    std::cout << "IP: " << ip << std::endl;
+    std::cout << "areav_x: " << areav[ip * dim + 0] << std::endl;
+    std::cout << "areav_y: " << areav[ip * dim + 1] << std::endl;
   }
 }
 

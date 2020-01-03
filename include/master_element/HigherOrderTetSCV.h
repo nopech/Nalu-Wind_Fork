@@ -44,6 +44,27 @@ public:
 
   KOKKOS_FUNCTION
   virtual ~HigherOrderTetSCV() {}
+  
+  std::vector<double> getCentroid(
+    std::vector<ordinal_type>& nodeOrdinals, 
+    std::unique_ptr<ElementDescription>& eleDesc);
+  
+  void hex_shape_fcn_p1( // used for the isoparametric mapping of the intgLoc on the scs
+    const int npts,
+    Kokkos::View<double**>& par_coord, 
+    double* shape_fcn);
+  
+  void tet_shape_fcn_p1(
+    const int npts,
+    Kokkos::View<double**>& par_coord, 
+    double* shape_fcn);
+  
+  void tet_shape_fcn_p2(
+    const int npts,
+    Kokkos::View<double**>& par_coord, 
+    double* shape_fcn);
+  
+  double hex_volume_grandy(Kokkos::View<double**> scvCoords);
 
   void shape_fcn(double *shpfc) final;
   KOKKOS_FUNCTION virtual const int *  ipNodeMap(int ordinal = 0) const final;
@@ -77,7 +98,11 @@ private:
     const double* POINTER_RESTRICT shapeDerivs ) const;
 
   const int nodes1D_;
+  const int polyOrder_;
+  const int numQuad_;
+  int numSubelements_;
   const Kokkos::View<int***> nodeMap;
+  double totalVol_;
 
   LagrangeBasis basis_;
   const TensorProductQuadratureRule quadrature_;
@@ -87,6 +112,9 @@ private:
   Kokkos::View<double*> ipWeights_;
   Kokkos::View<double**> intgLoc_;
   Kokkos::View<int*> ipNodeMap_;
+  Kokkos::View<double**> intgLocVolIso_;
+  std::vector<double> shape_fcnHex_;
+  std::vector<std::vector<double>> subvolNodeLoc_; // scv's defined with vertices in iso coords
 };
 
 } // namespace nalu

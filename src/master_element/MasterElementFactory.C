@@ -173,7 +173,7 @@ namespace nalu{
 
     auto desc = ElementDescription::create(dimension, topo);
 
-    std::cout << "Is superelement? " << topo.is_superelement() << std::endl;
+//    std::cout << "Is superelement? " << topo.is_superelement() << std::endl;
     auto basis = (topo.is_superelement()) ?
         LagrangeBasis(desc->inverseNodeMap, desc->nodeLocs1D)
       : LagrangeBasis(desc->inverseNodeMapBC, desc->nodeLocs1D);
@@ -257,9 +257,9 @@ namespace nalu{
     if (desc->baseTopo == stk::topology::TRI_3_2D) {
       endPoints = std::make_pair(0, 1);
     }
-    else if (desc->baseTopo == stk::topology::TET_4) {
-      endPoints = std::make_pair(0, 1);
-    }
+//    else if (desc->baseTopo == stk::topology::TET_4) {
+//      endPoints = std::make_pair(0, 1);
+//    }
     else {
       endPoints = std::make_pair(-1, 1);
     }

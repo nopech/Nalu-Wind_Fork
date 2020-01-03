@@ -78,6 +78,7 @@ double TensorProductQuadratureRule::integration_point_weight(int s1Node, int s1I
 
 double TensorProductQuadratureRule::integration_point_weight(int s1Node, int s2Node, int s1Ip, int s2Ip) const
 {
+//  std::cout << "weight = " << weights_[s1Ip] << std::endl;
   const double Ls1 = (scsEndLoc_[s1Node + 1] - scsEndLoc_[s1Node]) * weights_[s1Ip];
   const double Ls2 = (scsEndLoc_[s2Node + 1] - scsEndLoc_[s2Node]) * weights_[s2Ip];
   const double weightedIsoparametricArea = Ls1 * Ls2;

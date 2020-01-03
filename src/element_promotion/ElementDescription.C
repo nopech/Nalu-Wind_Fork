@@ -98,7 +98,7 @@ ElementDescription::create(int dimension, stk::topology superTopo)
   // Find the baseTopo of the given superTopo
   stk::topology baseTopo = baseTopoMap[superTopo];
   
-  NaluEnv::self().naluOutputP0() << "supertopo has basetopo " << baseTopo << std::endl;
+//  NaluEnv::self().naluOutputP0() << "supertopo has basetopo " << baseTopo << std::endl;
   return ElementDescription::create(dimension, poly_order_from_topology(dimension, superTopo), baseTopo);
 }
 
@@ -110,28 +110,28 @@ ElementDescription::create(int dimension, int order, stk::topology topo)
   
   if ( topo.base() == stk::topology::QUAD_4_2D ) {
     ThrowRequireMsg(dimension == 2, "Dimension doesn't match topology QUAD_4_2D");
-    NaluEnv::self().naluOutputP0() << "basetopo is QUAD_4_2D" << std::endl;
+//    NaluEnv::self().naluOutputP0() << "basetopo is QUAD_4_2D" << std::endl;
     
     return make_unique<QuadNElementDescription>(nodeLocations1D);
   }
   
   else if ( topo.base() == stk::topology::TRI_3_2D ) {
     ThrowRequireMsg(dimension == 2, "Dimension doesn't match topology TRI_3_2D");
-    NaluEnv::self().naluOutputP0() << "basetopo is TRI_3_2D" << std::endl;
+//    NaluEnv::self().naluOutputP0() << "basetopo is TRI_3_2D" << std::endl;
     
     return make_unique<TriNElementDescription>(nodeLocations1D);
   }
   
   else if ( topo.base() == stk::topology::HEX_8 ) {
     ThrowRequireMsg(dimension == 3, "Dimension doesn't match topology HEX_8");
-    NaluEnv::self().naluOutputP0() << "basetopo is HEX_8" << std::endl;
+//    NaluEnv::self().naluOutputP0() << "basetopo is HEX_8" << std::endl;
     
     return make_unique<HexNElementDescription>(nodeLocations1D);
   }
   
   if ( topo.base() == stk::topology::TET_4 ) {
     ThrowRequireMsg(dimension == 3, "Dimension doesn't match topology TET_4");
-    NaluEnv::self().naluOutputP0() << "basetopo is TET_4" << std::endl;
+//    NaluEnv::self().naluOutputP0() << "basetopo is TET_4" << std::endl;
     
     return make_unique<TetNElementDescription>(nodeLocations1D);
   }

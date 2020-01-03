@@ -96,6 +96,7 @@ HigherOrderHexSCS::set_interior_info()
           rightNode = nodeMap(m, l, k);
           orientation = +1;
         }
+//        std::cout << "leftNode = " << leftNode << ", rightNode = " << rightNode << std::endl;
 
         for (int j = 0; j < quadrature_.num_quad(); ++j) {
           for (int i = 0; i < quadrature_.num_quad(); ++i) {
@@ -119,7 +120,7 @@ HigherOrderHexSCS::set_interior_info()
   for (int m = 0; m < surfacesPerDirection; ++m) {
     for (int l = 0; l < nodes1D_; ++l) {
       for (int k = 0; k < nodes1D_; ++k) {
-        std::cout << "new subsurface" << std::endl;
+//        std::cout << "new subsurface" << std::endl;
 
         int leftNode; int rightNode; int orientation;
         if (m % 2 == 0) {
@@ -132,9 +133,7 @@ HigherOrderHexSCS::set_interior_info()
           rightNode = nodeMap(l, m + 0, k);
           orientation = +1;
         }
-        
-        std::cout << "leftNode: " << leftNode << std::endl;
-        std::cout << "rightNOde: " << rightNode << std::endl;
+//        std::cout << "leftNode = " << leftNode << ", rightNode = " << rightNode << std::endl;
 
         for (int j = 0; j < quadrature_.num_quad(); ++j) {
           for (int i = 0; i < quadrature_.num_quad(); ++i) {
@@ -145,10 +144,10 @@ HigherOrderHexSCS::set_interior_info()
             intgLoc_(scalar_index, 1) = quadrature_.scs_loc(m);
             intgLoc_(scalar_index, 2) = quadrature_.integration_point_location(l,j);
             
-            std::cout << "new IP" << std::endl;
-            std::cout << "intgLoc_ u = " << intgLoc_(scalar_index, 0) << std::endl;
-            std::cout << "intgLoc_ t = " << intgLoc_(scalar_index, 1) << std::endl;
-            std::cout << "intgLoc_ s = " << intgLoc_(scalar_index, 2) << std::endl;
+//            std::cout << "new IP" << std::endl;
+//            std::cout << "intgLoc_ u = " << intgLoc_(scalar_index, 0) << std::endl;
+//            std::cout << "intgLoc_ t = " << intgLoc_(scalar_index, 1) << std::endl;
+//            std::cout << "intgLoc_ s = " << intgLoc_(scalar_index, 2) << std::endl;
 
             ipWeights_[scalar_index] = orientation * quadrature_.integration_point_weight(k, l, i, j);
 
@@ -175,6 +174,7 @@ HigherOrderHexSCS::set_interior_info()
           rightNode = nodeMap(l, k, m + 0);
           orientation = -1;
         }
+//        std::cout << "leftNode = " << leftNode << ", rightNode = " << rightNode << std::endl;
 
         for (int j = 0; j < quadrature_.num_quad(); ++j) {
           for (int i = 0; i < quadrature_.num_quad(); ++i) {

@@ -57,9 +57,9 @@ HigherOrderEdge2DSCS::HigherOrderEdge2DSCS(
     for (int i = 0; i < quadrature_.num_quad(); ++i) {
       // TODO(psakiev) double check this
       intgLoc_(scalar_index, 0)  = quadrature_.integration_point_location(k,i);
-      std::cout << "intgLoc_: " << quadrature_.integration_point_location(k,i) << std::endl;
+//      std::cout << "intgLoc_: " << quadrature_.integration_point_location(k,i) << std::endl;
       ipWeights_(scalar_index) = quadrature_.integration_point_weight(k,i);
-      std::cout << "ipWeights_: " << quadrature_.integration_point_weight(k,i) << std::endl;
+//      std::cout << "ipWeights_: " << quadrature_.integration_point_weight(k,i) << std::endl;
       ipNodeMap_(scalar_index) = nodeMap(k);
       ++scalar_index;
     }

@@ -136,6 +136,7 @@ SteadyThermalContactSrcElemSuppAlg::elem_execute(
     }
     const double x = scvCoords_[0];
     const double y = scvCoords_[1];
+//    std::cout << "x = " << x << ", y = " << y << std::endl;
     rhs[nearestNode] += k_/4.0*(2.0*a_*pi_)*(2.0*a_*pi_)*(cos(2.0*a_*pi_*x) + cos(2.0*a_*pi_*y))*ws_scv_volume_[ip];
   }
 

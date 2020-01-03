@@ -77,6 +77,11 @@ HigherOrderQuad2DSCV::set_interior_info()
           intgLoc_(scalar_index, 1) = quadrature_.integration_point_location(l,j);
           ipWeights_(scalar_index) = quadrature_.integration_point_weight(k,l,i,j);
           ipNodeMap_(scalar_index) = nodeMap(l, k);
+          
+//          std::cout << std::endl;
+//          std::cout << "intgLoc_ = {" << intgLoc_(scalar_index, 0) << ", " << intgLoc_(scalar_index, 1) << "}" << std::endl;
+//          std::cout << "ipWeights_ = " << ipWeights_(scalar_index) << std::endl;
+//          std::cout << "ipNodeMap_ = " << ipNodeMap_(scalar_index) << std::endl;
 
           // increment indices
           ++scalar_index;
@@ -117,6 +122,8 @@ HigherOrderQuad2DSCV::determinant(
   for (int ip = 0; ip < numIntPoints_; ++ip) {
     const double det_j = jacobian_determinant(coords, &shapeDerivs_.data()[grad_offset] );
     volume[ip] = ipWeights_(ip) * det_j;
+    
+    std::cout << "ipWeight = " << ipWeights_(ip) << ", volume ip " << ip << " = " << volume[ip] << std::endl;
 
     //flag error
     if (det_j < tiny_positive_value()) {
@@ -134,13 +141,18 @@ HigherOrderQuad2DSCV::jacobian_determinant(
 {
   double dx_ds1 = 0.0;  double dx_ds2 = 0.0;
   double dy_ds1 = 0.0;  double dy_ds2 = 0.0;
+  
+//  std::cout << std::endl;
+//  std::cout << "new IP" << std::endl;
 
   for (int node = 0; node < nodesPerElement_; ++node) {
     const int vector_offset = node * nDim_;
 
     const double xCoord = elemNodalCoords[vector_offset + 0];
     const double yCoord = elemNodalCoords[vector_offset + 1];
-
+    
+//    std::cout << "xCoord = " << xCoord << ", yCoord = " << yCoord << std::endl;
+    
     const double dn_ds1  = shapeDerivs[vector_offset + 0];
     const double dn_ds2  = shapeDerivs[vector_offset + 1];
 

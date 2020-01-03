@@ -1,5 +1,5 @@
 /* 
- * File:   HigherOrderTet43DSCS.h
+ * File:   HigherOrderTetSCS.h
  * Author: Raphael Lindegger
  *
  * Created on November 2, 2019, 12:49 PM
@@ -51,6 +51,9 @@ public:
   std::vector<double> getCentroid(
     std::vector<ordinal_type>& nodeOrdinals, 
     std::unique_ptr<ElementDescription>& eleDesc);
+  
+  double getMagnitude(std::vector<double> B, std::vector<double> P);
+  std::vector<double> getCentroid(Kokkos::View<double**> &vertices);
 
   void shape_fcn(double *shpfc) final;
   
@@ -138,7 +141,6 @@ public:
     return intgLoc_.data();
   }
 
-  const double* shape_functions() const { return shapeFunctionVals_.data(); }
   const double* ip_weights() const { return ipWeights_.data(); }
 
 private:
@@ -152,7 +154,7 @@ private:
   const int numQuad_;
   int ipsPerFace_;
   int numSubelements_;
-  const int numSubsurfacesPerSubelement_; // subsurfaces are the individual faces of the CV
+  const int numSubsurfacesPerSubelement_; // subsurfaces are the individual faces of the CV, aka SCS (subcontrol surfaces)
   const int numSubsurfacesPerSubface_; // subsurfaces are the individual faces of the CV, faces are on the boundary of the element
 
   const Kokkos::View<int***> nodeMap;
@@ -164,9 +166,6 @@ private:
 
   Kokkos::View<int**> lrscv_;
   Kokkos::View<int*> oppNode_;
-  Kokkos::View<double**> shapeFunctionVals_;
-  Kokkos::View<double***> shapeDerivs_;
-  Kokkos::View<double***> expFaceShapeDerivs_;
   Kokkos::View<double**> intgLocSurfIso_;
   Kokkos::View<double**> intgLoc_;
   Kokkos::View<double**> intgExpFace_;

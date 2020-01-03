@@ -13,6 +13,7 @@
 #include <element_promotion/TensorProductQuadratureRule.h>
 #include <element_promotion/LagrangeBasis.h>
 #include <element_promotion/NodeMapMaker.h>
+#include <element_promotion/ElementDescription.h>
 
 
 
@@ -41,6 +42,25 @@ public:
     TensorProductQuadratureRule quadrature);
   KOKKOS_FUNCTION
   virtual ~HigherOrderTri2DSCV() {}
+  
+  std::vector<double> getCentroid(
+    std::vector<ordinal_type> nodeOrdinals, 
+    std::unique_ptr<ElementDescription>& eleDesc);
+  
+  void quad_shape_fcn_p1( // used for the isoparametric mapping of the intgLoc on the scv
+    const int npts,
+    Kokkos::View<double**>& par_coord, 
+    double* shape_fcn);
+  
+  void tri_shape_fcn_p1(
+    const int npts,
+    Kokkos::View<double**>& par_coord, 
+    double* shape_fcn);
+  
+  void tri_shape_fcn_p2(
+    const int npts,
+    Kokkos::View<double**>& par_coord, 
+    double* shape_fcn);
 
   void shape_fcn(double *shpfc) final;
 
@@ -51,16 +71,6 @@ public:
     const double *coords,
     double *volume,
     double * error ) final;
-
-  void grad_op(
-    const int nelem,
-    const double *coords,
-    double *gradop,
-    double *deriv,
-    double *det_j,
-    double * error) final;
-
-
 
   const double* shape_functions() const { return shapeFunctionVals_.data(); }
   const double* ip_weights() const { return ipWeights_.data(); }
@@ -73,20 +83,23 @@ public:
 private:
   void set_interior_info();
 
-  double jacobian_determinant(
-    const double* POINTER_RESTRICT elemNodalCoords,
-    const double* POINTER_RESTRICT shapeDerivs ) const;
-
   LagrangeBasis basis_;
   const TensorProductQuadratureRule quadrature_;
   const Kokkos::View<int**> nodeMap;
   const int nodes1D_;
+  const int polyOrder_;
+  const int numQuad_;
+  double totalVol_;
 
+  Kokkos::View<double**> intgLocSurfIso_;
   Kokkos::View<double**> shapeFunctionVals_;
   Kokkos::View<double***>  shapeDerivs_;
   Kokkos::View<double*> ipWeights_;
   Kokkos::View<double**> intgLoc_;
   Kokkos::View<int*> ipNodeMap_;
+  Kokkos::View<double***> intSubVolumes_; // internal subvolumes, defined with 4 points
+  
+  std::vector<double> shape_fcnQuad_;
 };
 
 } // namespace nalu

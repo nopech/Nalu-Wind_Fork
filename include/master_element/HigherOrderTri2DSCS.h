@@ -13,6 +13,7 @@
 #include <element_promotion/TensorProductQuadratureRule.h>
 #include <element_promotion/LagrangeBasis.h>
 #include <element_promotion/NodeMapMaker.h>
+#include <element_promotion/ElementDescription.h>
 
 
 
@@ -43,6 +44,10 @@ public:
     TensorProductQuadratureRule quadrature);
   KOKKOS_FUNCTION
   virtual ~HigherOrderTri2DSCS() {}
+  
+  std::vector<double> getCentroid(
+    std::vector<ordinal_type> nodeOrdinals, 
+    std::unique_ptr<ElementDescription>& eleDesc);
 
   void shape_fcn(double *shpfc) final;
   
@@ -138,6 +143,8 @@ private:
   const Kokkos::View<int**> faceNodeMap;
   const Kokkos::View<int**> sideNodeOrdinals_;
   const int nodes1D_;
+  const int polyOrder_;
+  const int numQuad_;
 
   Kokkos::View<double**> shapeFunctionVals_;
   Kokkos::View<double***>  shapeDerivs_;

@@ -478,6 +478,12 @@ void TetSCS::determinant(
     ( &nelem, &npe, &nint, coords, areav );
 
   // all is always well; no error checking
+//  std::cout << "area vector = {" << areav[0] << ", " << areav[1] << ", " << areav[2] << "}" << std::endl;
+//  std::cout << "area vector = {" << areav[3] << ", " << areav[4] << ", " << areav[5] << "}" << std::endl;
+//  std::cout << "area vector = {" << areav[6] << ", " << areav[7] << ", " << areav[8] << "}" << std::endl;
+//  std::cout << "area vector = {" << areav[9] << ", " << areav[10] << ", " << areav[11] << "}" << std::endl;
+//  std::cout << "area vector = {" << areav[12] << ", " << areav[13] << ", " << areav[14] << "}" << std::endl;
+//  std::cout << "area vector = {" << areav[15] << ", " << areav[16] << ", " << areav[17] << "}" << std::endl;
   *error = 0;
 }
 

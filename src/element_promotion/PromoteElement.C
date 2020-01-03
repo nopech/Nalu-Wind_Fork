@@ -722,7 +722,7 @@ add_face_nodes_to_elem_connectivity(
     ThrowAssert(nodeIds.size() == ords.size());
     ThrowAssert(desc.newNodesPerFace == static_cast<int>(ords.size()));
     
-    if ( nodeIds.size() != 0 ) { // implemented this to make tet p2 elements work, they don't have face nodes
+    if ( nodeIds.size() > 0 ) { // implemented this to make tet p2 elements work, they don't have face nodes
       ThrowAssert(desc.newNodesPerFace == newNodesPerEdge * newNodesPerEdge); // this does not work for others than hex
 
       for (int j = 0; j < newNodesPerEdge; ++j) {

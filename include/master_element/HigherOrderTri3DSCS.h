@@ -102,11 +102,6 @@ private:
   void eval_shape_functions_at_ips();
   void eval_shape_derivs_at_ips();
 
-  void area_vector(
-    const double* POINTER_RESTRICT elemNodalCoords,
-    const double* POINTER_RESTRICT shapeDeriv,
-    std::array<double,3>& areaVector) const;
-
   LagrangeBasis basis_;
   const TensorProductQuadratureRule quadrature_;
   const Kokkos::View<int**> nodeMap;

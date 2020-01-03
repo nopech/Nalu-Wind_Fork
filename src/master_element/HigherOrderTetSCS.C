@@ -100,10 +100,6 @@ HigherOrderTetSCS::HigherOrderTetSCS(
 
   // set up integration rule and relevant maps on faces
   set_boundary_info();
-
-  shapeFunctionVals_ = basis_.eval_basis_weights(intgLoc_);
-  shapeDerivs_ = basis_.eval_deriv_weights(intgLoc_);
-  expFaceShapeDerivs_ = basis_.eval_deriv_weights(intgExpFace_);
 #endif
 }
 
@@ -133,6 +129,8 @@ HigherOrderTetSCS::set_interior_info()
   ipWeights_ = Kokkos::View<double*>("ip_weight", numIntPoints_);
   subsurfaceNodeLoc_.resize(numSubelements_ * numSubsurfacesPerSubelement_ * 4, std::vector<double>(3));
 
+  ordinal_type nodeOne;
+  ordinal_type nodeTwo;
   ordinal_type left;
   ordinal_type right;
   
@@ -164,6 +162,16 @@ HigherOrderTetSCS::set_interior_info()
     {2, 3},
     {1, 2, 3}
   };
+  
+                               // 0   1   2   3   4   5     scs
+  std::vector<int> orientations {-1, -1,  1,  1, -1, -1, // subelement 0
+                                  1, -1,  1,  1, -1, -1, // subelement 1
+                                  1,  1, -1,  1, -1, -1, // subelement 2
+                                 -1, -1,  1, -1,  1,  1, // subelement 3
+                                 -1,  1, -1, -1,  1, -1, // subelement 4
+                                  1,  1, -1,  1, -1, -1, // subelement 5
+                                  1, -1,  1,  1, -1, -1, // subelement 6
+                                 -1, -1,  1,  1, -1, -1};// subelement 7
 
   // initialize intgLoc_
   for (int i = 0; i < numIntPoints_; ++i) {
@@ -178,6 +186,8 @@ HigherOrderTetSCS::set_interior_info()
     
     int countSubsurf = 0;
     for (int subSurf = 0; subSurf < 6; ++subSurf) {
+//      std::cout << std::endl;
+//      std::cout << "new scs" << std::endl;
       
       for (int node = 0; node < 4; ++node) {
         const int numOrd = subsurfCreationIndices[countSubsurf].size();
@@ -193,11 +203,24 @@ HigherOrderTetSCS::set_interior_info()
         
         int subsurfaceNodeLocIndex = 24*subElement + 4*subSurf + node;
         subsurfaceNodeLoc_[subsurfaceNodeLocIndex] = nodeLoc;
+//        std::cout << "nodeLoc = {" << nodeLoc[0] << ", " << nodeLoc[1] << ", " << nodeLoc[2] << "}" << std::endl;
         
-        // if current ordinals describe a subedge (only 2 ordinals), use them for the left/right node mapping
+        // if the scs node loop is at the third node which is created from a centroid of an edge, 
+        // use the edge defining nodes for the left/right node mapping
         if (node == 2) {
-          left = centroidDefiningOrdinals[0];
-          right = centroidDefiningOrdinals[1];
+          
+          nodeOne = centroidDefiningOrdinals[0];
+          nodeTwo = centroidDefiningOrdinals[1];
+//          std::cout << "nodeONe = " << nodeOne << ", nodeTwo = " << nodeTwo << std::endl;
+          
+          if (nodeOne < nodeTwo) {
+            left = nodeOne;
+            right = nodeTwo;
+          }
+          else {
+            left = nodeTwo;
+            right = nodeOne;
+          }
         }
         
         countSubsurf++;
@@ -205,19 +228,16 @@ HigherOrderTetSCS::set_interior_info()
 
       // isoparametric mapping of the intgLoc of a isoparametric rectangle to the isoparametric tet
       int countHexSF = 0;
+      int quadIndex = 0;
+      int orientation = orientations[6*subElement+subSurf];
       for (int quadPoint = 0; quadPoint < numQuad_; ++quadPoint) { // for each ip at subsurf
 //        std::cout << "new quadpoint" << std::endl;
         
-        int quadIndex = 0;
-        if (quadPoint >= quadrature_.num_quad()) {
-          quadIndex = quadPoint - quadrature_.num_quad();
-        }
-        else {
-          quadIndex = quadPoint;
+        if (quadIndex >= quadrature_.num_quad()) {
+          quadIndex = 0;
         }
         
         // IP weight
-        int orientation = left < right ? 1 : -1;
         ipWeights_(countIP) = orientation * quadrature_.weights(quadIndex) * quadrature_.weights(quadIndex);
 
         // left/right node mapping
@@ -240,6 +260,7 @@ HigherOrderTetSCS::set_interior_info()
         
 //        std::cout << "isoCalc intgLoc: " << intgLoc_(countIP, 0) << ", " << intgLoc_(countIP, 1) << ", " << intgLoc_(countIP, 2) << std::endl;
         countIP++;
+        quadIndex++;
         
       } // ip
     } // subSurf
@@ -249,22 +270,8 @@ HigherOrderTetSCS::set_interior_info()
 // TODO adapt to tet, copied from hex
 int HigherOrderTetSCS::opposing_face_map(int k, int l, int i, int j, int face_index)
 {
-  const int surfacesPerDirection = nodes1D_ - 1;
-  const int faceToSurface[6] = {
-      surfacesPerDirection,     // nearest scs face to t=-1.0
-      3*surfacesPerDirection-1, // nearest scs face to s=+1.0, the last face
-      2*surfacesPerDirection-1, // nearest scs face to t=+1.0
-      2*surfacesPerDirection,   // nearest scs face to s=-1.0
-      0,                        // nearest scs face to u=-1.0, the first face
-      surfacesPerDirection-1    // nearest scs face to u=+1.0, the first face
-  };
-
-  const int face_offset = faceToSurface[face_index] * ipsPerFace_;
-  const int node_index = k + nodes1D_ * l;
-  const int node_offset = node_index * (numQuad_ * numQuad_);
-  const int ip_index = face_offset + node_offset + i + numQuad_ * j;
-
-  return ip_index;
+  // content is deleted, look at HigherOrderHexSCS as an example
+  return 0;
 }
 
 void
@@ -292,10 +299,10 @@ HigherOrderTetSCS::set_boundary_info()
   else if (polyOrder_ == 2) {
     numSubfacePerFace = 4;
     subfaceCreationIndices = {
-      {0, 1, 5},
-      {1, 2, 3},
-      {5, 1, 3},
-      {5, 3, 4}
+      {0, 1, 3},
+      {1, 2, 4},
+      {1, 3, 4},
+      {3, 4, 5}
     };
   }
   else {
@@ -424,7 +431,6 @@ HigherOrderTetSCS::hex_shape_fcn_p1(
 void
 HigherOrderTetSCS::shape_fcn(double* shpfc)
 {
-  
   if (polyOrder_ == 1) {
     tet_shape_fcn_p1(numIntPoints_, intgLoc_, shpfc);
   }
@@ -464,21 +470,21 @@ void HigherOrderTetSCS::tet_shape_fcn_p2(
     const double eta = par_coord(j, 1);
     const double zeta = par_coord(j, 2);
     
-    const double L1 = 1-xi-eta-zeta;
+    const double L1 = 1.0-xi-eta-zeta;
     const double L2 = xi;
     const double L3 = eta;
     const double L4 = zeta;
     
-    shape_fcn[0 + tenj] = L1*(2*L1-1);
-    shape_fcn[1 + tenj] = L2*(2*L2-1);
-    shape_fcn[2 + tenj] = L3*(2*L3-1);
-    shape_fcn[3 + tenj] = L4*(2*L4-1);
-    shape_fcn[4 + tenj] = 4*L1*L2;
-    shape_fcn[5 + tenj] = 4*L2*L3;
-    shape_fcn[6 + tenj] = 4*L3*L1;
-    shape_fcn[7 + tenj] = 4*L1*L4;
-    shape_fcn[8 + tenj] = 4*L2*L4;
-    shape_fcn[9 + tenj] = 4*L3*L4;
+    shape_fcn[0 + tenj] = L1*(2.0*L1-1.0);
+    shape_fcn[1 + tenj] = L2*(2.0*L2-1.0);
+    shape_fcn[2 + tenj] = L3*(2.0*L3-1.0);
+    shape_fcn[3 + tenj] = L4*(2.0*L4-1.0);
+    shape_fcn[4 + tenj] = 4.0*L1*L2;
+    shape_fcn[5 + tenj] = 4.0*L2*L3;
+    shape_fcn[6 + tenj] = 4.0*L3*L1;
+    shape_fcn[7 + tenj] = 4.0*L1*L4;
+    shape_fcn[8 + tenj] = 4.0*L2*L4;
+    shape_fcn[9 + tenj] = 4.0*L3*L4;
   }
 }
 
@@ -513,30 +519,30 @@ void HigherOrderTetSCS::tet_deriv_shape_fcn_p2(
     const double xi = par_coord(j, 0);
     const double eta = par_coord(j, 1);
     const double zeta = par_coord(j, 2);
-    deriv[0  + thirtyj] =  4.0*xi+4.0*eta+4.0*zeta-3;   // IP j, Node 0, dxi
-    deriv[1  + thirtyj] =  4.0*xi+4.0*eta+4.0*zeta-3;   // IP j, Node 0, deta
-    deriv[2  + thirtyj] =  4.0*xi+4.0*eta+4.0*zeta-3;   // IP j, Node 0, dzeta
-    deriv[3  + thirtyj] =  4.0*xi-1;                    // IP j, Node 1, dxi
+    deriv[0  + thirtyj] =  4.0*xi+4.0*eta+4.0*zeta-3.0;   // IP j, Node 0, dxi
+    deriv[1  + thirtyj] =  4.0*xi+4.0*eta+4.0*zeta-3.0;   // IP j, Node 0, deta
+    deriv[2  + thirtyj] =  4.0*xi+4.0*eta+4.0*zeta-3.0;   // IP j, Node 0, dzeta
+    deriv[3  + thirtyj] =  4.0*xi-1.0;                    // IP j, Node 1, dxi
     deriv[4  + thirtyj] =  0.0;                         // IP j, Node 1, deta
     deriv[5  + thirtyj] =  0.0;                         // IP j, Node 1, dzeta
     deriv[6  + thirtyj] =  0.0;                         // IP j, Node 2, dxi
-    deriv[7  + thirtyj] =  4.0*eta-1;                   // IP j, Node 2, deta
+    deriv[7  + thirtyj] =  4.0*eta-1.0;                   // IP j, Node 2, deta
     deriv[8  + thirtyj] =  0.0;                         // IP j, Node 2, dzeta
     deriv[9  + thirtyj] =  0.0;                         // IP j, Node 3, dxi
     deriv[10 + thirtyj] =  0.0;                         // IP j, Node 3, deta
-    deriv[11 + thirtyj] =  4.0*zeta-1;                  // IP j, Node 3, dzeta
-    deriv[12 + thirtyj] = -4.0*(2.0*xi+eta+zeta-1);     // IP j, Node 4, dxi
+    deriv[11 + thirtyj] =  4.0*zeta-1.0;                  // IP j, Node 3, dzeta
+    deriv[12 + thirtyj] = -4.0*(2.0*xi+eta+zeta-1.0);     // IP j, Node 4, dxi
     deriv[13 + thirtyj] = -4.0*xi;                      // IP j, Node 4, deta
     deriv[14 + thirtyj] = -4.0*xi;                      // IP j, Node 4, dzeta
     deriv[15 + thirtyj] =  4.0*eta;                     // IP j, Node 5, dxi
     deriv[16 + thirtyj] =  4.0*xi;                      // IP j, Node 5, deta
     deriv[17 + thirtyj] =  0.0;                         // IP j, Node 5, dzeta
     deriv[18 + thirtyj] = -4.0*eta;                     // IP j, Node 6, dxi
-    deriv[19 + thirtyj] = -4.0*(xi+2.0*eta+zeta-1);     // IP j, Node 6, deta
+    deriv[19 + thirtyj] = -4.0*(xi+2.0*eta+zeta-1.0);     // IP j, Node 6, deta
     deriv[20 + thirtyj] = -4.0*eta;                     // IP j, Node 6, dzeta
     deriv[21 + thirtyj] = -4.0*zeta;                    // IP j, Node 7, dxi
     deriv[22 + thirtyj] = -4.0*zeta;                    // IP j, Node 7, deta
-    deriv[23 + thirtyj] = -4.0*(xi+eta+2.0*zeta-1);     // IP j, Node 7, dzeta
+    deriv[23 + thirtyj] = -4.0*(xi+eta+2.0*zeta-1.0);     // IP j, Node 7, dzeta
     deriv[24 + thirtyj] =  4.0*zeta;                    // IP j, Node 8, dxi
     deriv[25 + thirtyj] =  0.0;                         // IP j, Node 8, deta
     deriv[26 + thirtyj] =  4.0*xi;                      // IP j, Node 8, dzeta
@@ -546,22 +552,26 @@ void HigherOrderTetSCS::tet_deriv_shape_fcn_p2(
   }
 }
 
+// TODO adapt to tet, copied from hex
 const int* HigherOrderTetSCS::adjacentNodes()
 {
   return &lrscv_(0,0);
 }
 
+// TODO adapt to tet, copied from hex
 const int* HigherOrderTetSCS::ipNodeMap(int ordinal) const
 {
   return &ipNodeMap_[ordinal*ipsPerFace_];
 }
 
+// TODO adapt to tet, copied from hex
 const int *
 HigherOrderTetSCS::side_node_ordinals (int ordinal) const
 {
   return &sideNodeOrdinals_(ordinal,0);
 }
 
+// TODO adapt to tet, copied from hex
 int
 HigherOrderTetSCS::opposingNodes(
   const int ordinal,
@@ -570,6 +580,7 @@ HigherOrderTetSCS::opposingNodes(
   return oppNode_[ordinal*ipsPerFace_+node];
 }
 
+// TODO adapt to tet, copied from hex
 int
 HigherOrderTetSCS::opposingFace(
   const int ordinal,
@@ -592,10 +603,13 @@ HigherOrderTetSCS::determinant(
   isoParCoords = Kokkos::View<double[4][3]>("isoParCoords");
   std::vector<double> shape_fcn(4 * nodesPerElement_);
   double *p_shape_fcn = &shape_fcn[0];
+  
+  auto desc = ElementDescription::create(3, polyOrder_, stk::topology::TET_4);
 
   // loop through all internal subsurfaces (scs)
   int offset = 0;
   for (int subSurf = 0; subSurf < numSubSurf; ++subSurf) {
+//    std::cout << "scs " << subSurf << std::endl;
     
     // initialize coords vectors
     for (int i = 0; i < 4; ++i) {
@@ -640,6 +654,9 @@ HigherOrderTetSCS::determinant(
                                        0.5*(d1[2]*d2[0]-d1[0]*d2[2]),
                                        0.5*(d1[0]*d2[1]-d1[1]*d2[0])};
     
+//    double area = std::sqrt( area_vector[0]*area_vector[0] + area_vector[1]*area_vector[1] + area_vector[2]*area_vector[2] );
+//    std::cout << "area = " << area << std::endl;
+    
     // loop through all IPs of the current scs
     for (int ip = 0; ip < numQuad_; ++ip) {
       const double weight = ipWeights_(offset + ip);
@@ -647,11 +664,33 @@ HigherOrderTetSCS::determinant(
         areav[(offset + ip) * nDim_ + j] = area_vector[j] * weight;
       }
     }
-    
     offset += numQuad_;
   }
   *error = 0; // no error checking available
 }
+
+double HigherOrderTetSCS::getMagnitude(std::vector<double> B, std::vector<double> P) {
+  double mag = 0.0;
+  
+  for (int i = 0; i < B.size(); ++i) {
+    mag += (B[i] - P[i]) * (B[i] - P[i]);
+  }
+  
+  return std::sqrt(mag);
+}
+
+std::vector<double> HigherOrderTetSCS::getCentroid(Kokkos::View<double**> &vertices) {
+  std::vector<double> centroid(3, 0.0);
+  
+  for (int i = 0; i < 4; ++i) {
+    for (int j = 0; j < 3; ++j) {
+      centroid[j] += 0.25 * vertices(i, j);
+    }
+  }
+  
+  return centroid;
+}
+
 
 void HigherOrderTetSCS::grad_op(
   const int nelem,
@@ -706,28 +745,8 @@ void HigherOrderTetSCS::face_grad_op(
 {
   *error = 0.0;
   ThrowRequireMsg(nelem == 1, "face_grad_op is executed one element at a time for HO");
-
-  int grad_offset = 0;
-  int grad_inc = nDim_ * nodesPerElement_;
-
-  const int face_offset =  nDim_ * ipsPerFace_ * nodesPerElement_ * face_ordinal;
-  const double* const faceShapeDerivs = &expFaceShapeDerivs_.data()[face_offset];
-
-  for (int ip = 0; ip < ipsPerFace_; ++ip) {
-    gradient_3d(
-      nodesPerElement_,
-      coords,
-      &faceShapeDerivs[grad_offset],
-      &gradop[grad_offset],
-      &det_j[ip]
-    );
-
-    if (det_j[ip] < tiny_positive_value()) {
-      *error = 1.0;
-    }
-
-    grad_offset += grad_inc;
-  }
+  
+  // content is deleted, look at HigherOrderHexSCS as an example
 }
 
 void HigherOrderTetSCS::gij(
@@ -736,11 +755,7 @@ void HigherOrderTetSCS::gij(
   double *glowerij,
   double *deriv)
 {
-  SIERRA_FORTRAN(threed_gij)
-    ( &nodesPerElement_,
-      &numIntPoints_,
-      deriv,
-      coords, gupperij, glowerij);
+  // content is deleted, look at HigherOrderHexSCS as an example
 }
 
 // TODO adapt to tet, copied from hex
@@ -749,28 +764,11 @@ double HigherOrderTetSCS::isInElement(
     const double *pointCoord,
     double *isoParCoord)
 {
-  std::array<double, 3> initialGuess = {{ 0.0, 0.0, 0.0 }};
-  int maxIter = 50;
-  double tolerance = 1.0e-16;
-  double deltaLimit = 1.0e4;
+  // content is deleted, look at HigherOrderHexSCS as an example
 
-  bool converged = isoparameteric_coordinates_for_point_3d(
-      basis_,
-      elemNodalCoord,
-      pointCoord,
-      isoParCoord,
-      initialGuess,
-      maxIter,
-      tolerance,
-      deltaLimit
-  );
-  ThrowAssertMsg(parametric_distance_hex(isoParCoord) < 1.0 + 1.0e-6 || !converged,
-      "Inconsistency in parametric distance calculation");
-
-  return (converged) ? parametric_distance_hex(isoParCoord) : std::numeric_limits<double>::max();
+  return 0.0;
 }
 
-// TODO adapt to tet, copied from hex
 void HigherOrderTetSCS::interpolatePoint(
   const int &nComp,
   const double *isoParCoord,
@@ -789,11 +787,7 @@ template <int p> void internal_face_grad_op(
   SharedMemView<DoubleType**, DeviceShmem>& coords,
   SharedMemView<DoubleType***, DeviceShmem>& gradop )
 {
-  using traits = AlgTraitsQuadPHexPGL<p>;
-  const int offset = traits::numFaceIp_ * face_ordinal;
-  auto range = std::make_pair(offset, offset + traits::numFaceIp_);
-  auto face_weights = Kokkos::subview(expReferenceGradWeights, range, Kokkos::ALL(), Kokkos::ALL());
-  generic_grad_op<AlgTraitsHexGL<p>>(face_weights, coords, gradop);
+  // content is deleted, look at HigherOrderHexSCS as an example
 }
 
 // TODO adapt to tet, copied from hex
@@ -803,13 +797,7 @@ void HigherOrderTetSCS::face_grad_op(
   SharedMemView<DoubleType**, DeviceShmem>& coords,
   SharedMemView<DoubleType***, DeviceShmem>& gradop)
 {
-  switch(nodes1D_ - 1) {
-    case 2: return internal_face_grad_op<2>(face_ordinal, expRefGradWeights_, coords, gradop);
-    case 3: return internal_face_grad_op<3>(face_ordinal, expRefGradWeights_, coords, gradop);
-    case 4: return internal_face_grad_op<4>(face_ordinal, expRefGradWeights_, coords, gradop);
-    case USER_POLY_ORDER: return internal_face_grad_op<USER_POLY_ORDER>(face_ordinal, expRefGradWeights_, coords, gradop);
-    default: return;
-  }
+  // content is deleted, look at HigherOrderHexSCS as an example
 }
 #else
 void HigherOrderTetSCS::face_grad_op(
