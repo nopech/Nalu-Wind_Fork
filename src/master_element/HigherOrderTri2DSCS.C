@@ -177,9 +177,9 @@ HigherOrderTri2DSCS::set_interior_info()
     //----------------------------------------------------------------
     // bottom left subtriangle
     subTriCentroid = getCentroid({0, 3, 5}, desc);
-    bottomEdgeCentroid = getCentroid({0, 3}, desc);
+    bottomEdgeCentroid = {quadrature_.scs_end_loc(1), 0.0};
     rightEdgeCentroid = getCentroid({3, 4, 5}, desc);
-    leftEdgeCentroid = getCentroid({5, 0}, desc);
+    leftEdgeCentroid = {0.0, quadrature_.scs_end_loc(1)};
     
     // bottom edge face endloc
     orientation = -1;
@@ -202,8 +202,8 @@ HigherOrderTri2DSCS::set_interior_info()
     //----------------------------------------------------------------
     // bottom right subtriangle
     subTriCentroid = getCentroid({3, 1, 4}, desc);
-    bottomEdgeCentroid = getCentroid({3, 1}, desc);
-    rightEdgeCentroid = getCentroid({1, 4}, desc);
+    bottomEdgeCentroid = {quadrature_.scs_end_loc(2), 0.0};
+    rightEdgeCentroid = {quadrature_.scs_end_loc(2), quadrature_.scs_end_loc(1)};
     leftEdgeCentroid = getCentroid({3, 4, 5}, desc);
     
     // bottom edge face endloc
@@ -228,8 +228,8 @@ HigherOrderTri2DSCS::set_interior_info()
     // top subtriangle
     subTriCentroid = getCentroid({5, 4, 2}, desc);
     bottomEdgeCentroid = getCentroid({3, 4, 5}, desc);
-    rightEdgeCentroid = getCentroid({4, 2}, desc);
-    leftEdgeCentroid = getCentroid({2, 5}, desc);
+    rightEdgeCentroid = {quadrature_.scs_end_loc(1), quadrature_.scs_end_loc(2)};
+    leftEdgeCentroid = {0.0, quadrature_.scs_end_loc(2)};
     
     // bottom edge face endloc
     orientation = 1;
