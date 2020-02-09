@@ -119,6 +119,9 @@ HigherOrderTri2DSCS::set_interior_info()
       for (int i = 0; i < 2; ++i) {
         intgLoc_(count, i) = subTriCentroid[i] + (intgLoc1D/scsLength)*( subEdgeCentroid[i]-subTriCentroid[i] );
       }
+      
+      std::cout << "intgLoc_(" << count << ") = {" << intgLoc_(count, 0) << ", " << intgLoc_(count, 1) << "}" << std::endl;
+      
       count++;
     }
   };
@@ -160,7 +163,7 @@ HigherOrderTri2DSCS::set_interior_info()
     writeIPInfo(subfaceCount, IPCount, subTriCentroid, leftEdgeCentroid, leftNode, rightNode, orientation);
   }
   else if (polyOrder_ == 2) {
-    numIntPoints_ = 24;
+    numIntPoints_ = 18;
     int orientation;
 
     // define L/R mappings
@@ -175,7 +178,7 @@ HigherOrderTri2DSCS::set_interior_info()
     // bottom left subtriangle
     subTriCentroid = getCentroid({0, 3, 5}, desc);
     bottomEdgeCentroid = getCentroid({0, 3}, desc);
-    rightEdgeCentroid = getCentroid({3, 5}, desc);
+    rightEdgeCentroid = getCentroid({3, 4, 5}, desc);
     leftEdgeCentroid = getCentroid({5, 0}, desc);
     
     // bottom edge face endloc
@@ -201,7 +204,7 @@ HigherOrderTri2DSCS::set_interior_info()
     subTriCentroid = getCentroid({3, 1, 4}, desc);
     bottomEdgeCentroid = getCentroid({3, 1}, desc);
     rightEdgeCentroid = getCentroid({1, 4}, desc);
-    leftEdgeCentroid = getCentroid({4, 3}, desc);
+    leftEdgeCentroid = getCentroid({3, 4, 5}, desc);
     
     // bottom edge face endloc
     orientation = 1;
@@ -224,7 +227,7 @@ HigherOrderTri2DSCS::set_interior_info()
     //----------------------------------------------------------------
     // top subtriangle
     subTriCentroid = getCentroid({5, 4, 2}, desc);
-    bottomEdgeCentroid = getCentroid({5, 4}, desc);
+    bottomEdgeCentroid = getCentroid({3, 4, 5}, desc);
     rightEdgeCentroid = getCentroid({4, 2}, desc);
     leftEdgeCentroid = getCentroid({2, 5}, desc);
     
@@ -243,31 +246,6 @@ HigherOrderTri2DSCS::set_interior_info()
     // left edge face endloc
     orientation = -1;
     leftNode = 2;
-    rightNode = 5;
-    writeIPInfo(subfaceCount, IPCount, subTriCentroid, leftEdgeCentroid, leftNode, rightNode, orientation);
-    
-    //----------------------------------------------------------------
-    // middle subtriangle
-    subTriCentroid = getCentroid({3, 4, 5}, desc);
-    bottomEdgeCentroid = getCentroid({3, 4}, desc);
-    rightEdgeCentroid = getCentroid({4, 5}, desc);
-    leftEdgeCentroid = getCentroid({5, 3}, desc);
-    
-    // bottom edge face endloc
-    orientation = -1;
-    leftNode = 3;
-    rightNode = 4;
-    writeIPInfo(subfaceCount, IPCount, subTriCentroid, bottomEdgeCentroid, leftNode, rightNode, orientation);
-    
-    // right edge face endloc
-    orientation = -1;
-    leftNode = 4;
-    rightNode = 5;
-    writeIPInfo(subfaceCount, IPCount, subTriCentroid, rightEdgeCentroid, leftNode, rightNode, orientation);
-    
-    // left edge face endloc
-    orientation = 1;
-    leftNode = 3;
     rightNode = 5;
     writeIPInfo(subfaceCount, IPCount, subTriCentroid, leftEdgeCentroid, leftNode, rightNode, orientation);
   }
