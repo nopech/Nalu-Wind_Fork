@@ -1,9 +1,9 @@
-/*------------------------------------------------------------------------*/
-/*  Copyright 2014 Sandia Corporation.                                    */
-/*  This software is released under the license detailed                  */
-/*  in the file, LICENSE, which is located in the top-level nalu      */
-/*  directory structure                                                   */
-/*------------------------------------------------------------------------*/
+/* 
+ * File:   TriNElementDescription.h
+ * Author: Raphael Lindegger
+ *
+ * Created on November 2, 2019, 2:02 PM
+ */
 
 #ifndef TriNElementDescription_h
 #define TriNElementDescription_h

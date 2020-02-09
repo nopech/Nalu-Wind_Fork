@@ -65,6 +65,7 @@ TensorProductQuadratureRule::TensorProductQuadratureRule(int polyOrder, std::pai
 
 double TensorProductQuadratureRule::integration_point_location(int nodeOrd, int ipOrd) const
 {
+//  std::cout << "nodeOrd = " << nodeOrd << ", ipOrd = " << ipOrd << ", scsEndLoc_[nodeOrd] = " << scsEndLoc_[nodeOrd] <<  ", scsEndLoc_[nodeOrd+1] = " << scsEndLoc_[nodeOrd + 1] << ", abscissae_[ipOrd] = " << abscissae_[ipOrd] << std::endl;
   return isoparametric_map(scsEndLoc_[nodeOrd], scsEndLoc_[nodeOrd + 1], abscissae_[ipOrd]);
 }
 

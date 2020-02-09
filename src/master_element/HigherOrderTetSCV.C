@@ -214,7 +214,7 @@ HigherOrderTetSCV::set_interior_info()
       }
 
       // isoparametric mapping of the intgLoc of a isoparametric rectangle to the isoparametric tet
-      int countHexSF = 0;;
+      int countHexSF = 0;
       int quadIndex = 0;
       for (int quadPoint = 0; quadPoint < numQuad_; ++quadPoint) { // for each ip in scv
 //        std::cout << "new quadpoint" << std::endl;

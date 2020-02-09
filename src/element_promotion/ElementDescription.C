@@ -83,9 +83,6 @@ int poly_order_from_topology(int dimension, stk::topology topo)
     ThrowErrorMsg("Topology not known to function poly_order_from_topology()");
   }
   
-//  std::cout << "no nodes = " << topo.num_nodes() << std::endl;
-//  std::cout << "nodes1D = " << nodes1D << std::endl;
-  
   const int polynomial_order = nodes1D-1;
   return polynomial_order;
 }
@@ -129,7 +126,7 @@ ElementDescription::create(int dimension, int order, stk::topology topo)
     return make_unique<HexNElementDescription>(nodeLocations1D);
   }
   
-  if ( topo.base() == stk::topology::TET_4 ) {
+  else if ( topo.base() == stk::topology::TET_4 ) {
     ThrowRequireMsg(dimension == 3, "Dimension doesn't match topology TET_4");
 //    NaluEnv::self().naluOutputP0() << "basetopo is TET_4" << std::endl;
     

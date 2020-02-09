@@ -95,47 +95,11 @@ public:
     double *det_j,
     double * error) final;
 
-  void face_grad_op(
-    const int nelem,
-    const int face_ordinal,
-    const double *coords,
-    double *gradop,
-    double *det_j,
-    double * error) final;
-
-  void gij(
-    const double *coords,
-    double *gupperij,
-    double *glowerij,
-    double *deriv) final;
-
-  double isInElement(
-      const double *elemNodalCoord,
-      const double *pointCoord,
-      double *isoParCoord) final;
-
-  void interpolatePoint(
-      const int &nComp,
-      const double *isoParCoord,
-      const double *field,
-      double *result) final;
-
   KOKKOS_FUNCTION const int * adjacentNodes() final;
 
   KOKKOS_FUNCTION virtual const int *  ipNodeMap(int ordinal = 0) const final;
 
   const int * side_node_ordinals(int ordinal = 0) const final;
-
-  KOKKOS_FUNCTION int opposingNodes(
-    const int ordinal, const int node) final;
-
-  KOKKOS_FUNCTION int opposingFace(
-    const int ordinal, const int node) final;
-
-  KOKKOS_FUNCTION void face_grad_op(
-    int face_ordinal,
-    SharedMemView<DoubleType**, DeviceShmem>& coords,
-    SharedMemView<DoubleType***, DeviceShmem>& gradop) final;
 
   virtual const double* integration_locations() const final {
     return intgLoc_.data();
@@ -146,8 +110,6 @@ public:
 private:
   void set_interior_info();
   void set_boundary_info();
-
-  KOKKOS_FUNCTION int opposing_face_map(int k, int l, int i, int j, int face_index);
 
   const int nodes1D_;
   const int polyOrder_;
@@ -176,8 +138,6 @@ private:
   std::vector<std::vector<double>> subsurfaceNodeLoc_; // internal subsurfaces, defined with 4 points
   std::vector<std::vector<double>> subsurfaceNodeLocBC_; // boundary subsurfaces, defined with 4 points
   std::vector<double> shape_fcnHex_;
-
-  AlignedViewType<DoubleType**[3]> expRefGradWeights_;
 };
 
 } // namespace nalu

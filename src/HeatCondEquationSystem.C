@@ -75,6 +75,7 @@
 #include <user_functions/SteadyThermal3dContactSrcElemSuppAlgDep.h>
 #include <user_functions/SteadyThermal3dContactSrcElemKernel.h>
 #include <user_functions/LinearIncreaseMatchingCornersAuxFunction.h>
+#include <user_functions/LaplaceValidationAuxFunction.h>
 
 #include <overset/UpdateOversetFringeAlgorithmDriver.h>
 
@@ -552,6 +553,9 @@ HeatCondEquationSystem::register_wall_bc(
       }
       else if ( fcnName == "linear_increase_matching_corners" ) {
         theAuxFunc = new LinearIncreaseMatchingCornersAuxFunction();
+      }
+      else if ( fcnName == "laplace_validation" ) {
+        theAuxFunc = new LaplaceValidationAuxFunction();
       }
       else {
         throw std::runtime_error("Only steady_2d/3d_thermal and linear_increase_matching_corners user functions supported");
@@ -1045,6 +1049,10 @@ HeatCondEquationSystem::register_initial_condition_fcn(
     else if ( fcnName == "steady_3d_thermal" ) {
       // create the function
       theAuxFunc = new SteadyThermal3dContactAuxFunction();      
+    }
+    else if ( fcnName == "laplace_validation" ) {
+      // create the function
+      theAuxFunc = new LaplaceValidationAuxFunction();      
     }
     else {
       throw std::runtime_error("HeatCondEquationSystem::register_initial_condition_fcn: steady_2d/3d_thermal only supported");

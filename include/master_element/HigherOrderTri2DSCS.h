@@ -34,9 +34,6 @@ public:
   using MasterElement::determinant;
   using MasterElement::shape_fcn;
   using MasterElement::grad_op;
-  using MasterElement::face_grad_op;
-  using MasterElement::gij;
-  using MasterElement::adjacentNodes;
 
   KOKKOS_FUNCTION
   HigherOrderTri2DSCS(
@@ -84,40 +81,9 @@ public:
     double *det_j,
     double * error) final;
 
-  void face_grad_op(
-    const int nelem,
-    const int face_ordinal,
-    const double *coords,
-    double *gradop,
-    double *det_j,
-    double * error) final;
-
-  void gij(
-    const double *coords,
-    double *gupperij,
-    double *glowerij,
-    double *deriv) final;
-
-  double isInElement(
-      const double *elemNodalCoord,
-      const double *pointCoord,
-      double *isoParCoord) final;
-
-  void interpolatePoint(
-      const int &nComp,
-      const double *isoParCoord,
-      const double *field,
-      double *result) final;
-
   KOKKOS_FUNCTION const int * adjacentNodes() final;
 
   KOKKOS_FUNCTION virtual const int *  ipNodeMap(int ordinal = 0) const final;
-
-  KOKKOS_FUNCTION int opposingNodes(
-    const int ordinal, const int node) final;
-
-  KOKKOS_FUNCTION int opposingFace(
-    const int ordinal, const int node) final;
 
   const int * side_node_ordinals(int ordinal = 0) const final;
 
@@ -130,12 +96,6 @@ private:
 
   void set_interior_info();
   void set_boundary_info();
-
-  template <Jacobian::Direction direction> void
-  area_vector(
-    const double *POINTER_RESTRICT elemNodalCoords,
-    double *POINTER_RESTRICT shapeDeriv,
-    double *POINTER_RESTRICT normalVec ) const;
 
   LagrangeBasis basis_;
   const TensorProductQuadratureRule quadrature_;
@@ -157,8 +117,6 @@ private:
   Kokkos::View<int*> oppFace_;
   Kokkos::View<double**> intgExpFace_;
   Kokkos::View<double***>  intSubfaces_; // internal subfaces, defined with 2 points B and P
-//  Kokkos::View<double**> realCoords;
-//  Kokkos::View<double**> isoParCoords;
 };
 
 } // namespace nalu

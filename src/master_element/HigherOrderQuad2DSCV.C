@@ -123,7 +123,7 @@ HigherOrderQuad2DSCV::determinant(
     const double det_j = jacobian_determinant(coords, &shapeDerivs_.data()[grad_offset] );
     volume[ip] = ipWeights_(ip) * det_j;
     
-    std::cout << "ipWeight = " << ipWeights_(ip) << ", volume ip " << ip << " = " << volume[ip] << std::endl;
+//    std::cout << "ipWeight = " << ipWeights_(ip) << ", volume ip " << ip << " = " << volume[ip] << std::endl;
 
     //flag error
     if (det_j < tiny_positive_value()) {

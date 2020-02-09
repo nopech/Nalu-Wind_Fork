@@ -16,6 +16,7 @@
 #include <user_functions/SteadyThermal3dContactAuxFunction.h>
 #include <user_functions/SteadyThermal3dContactDtDxAuxFunction.h>
 #include <user_functions/SteadyThermalContactAuxFunction.h>
+#include <user_functions/LaplaceValidationAuxFunction.h>
 #include <user_functions/SteadyTaylorVortexVelocityAuxFunction.h>
 #include <user_functions/SteadyTaylorVortexGradPressureAuxFunction.h>
 #include <user_functions/ConvectingTaylorVortexVelocityAuxFunction.h>
@@ -230,6 +231,9 @@ SolutionNormPostProcessing::analytical_function_factory(
   }
   else if ( functionName == "steady_3d_thermal_dtdx" ) {
     theAuxFunc = new SteadyThermal3dContactDtDxAuxFunction(0,realm_.meta_data().spatial_dimension());
+  }
+  else if ( functionName == "laplace_validation" ) {
+    theAuxFunc = new LaplaceValidationAuxFunction();
   }
   else if ( functionName == "SteadyTaylorVortexVelocity" ) {
     theAuxFunc = new SteadyTaylorVortexVelocityAuxFunction(0,realm_.meta_data().spatial_dimension());

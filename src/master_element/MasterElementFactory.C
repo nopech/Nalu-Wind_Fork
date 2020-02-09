@@ -182,9 +182,6 @@ namespace nalu{
     if (desc->baseTopo == stk::topology::TRI_3_2D) {
       endPoints = std::make_pair(0, 1);
     }
-//    else if (desc->baseTopo == stk::topology::TET_4) {
-//      endPoints = std::make_pair(0, 1);
-//    }
     else {
       endPoints = std::make_pair(-1, 1);
     }
@@ -257,9 +254,6 @@ namespace nalu{
     if (desc->baseTopo == stk::topology::TRI_3_2D) {
       endPoints = std::make_pair(0, 1);
     }
-//    else if (desc->baseTopo == stk::topology::TET_4) {
-//      endPoints = std::make_pair(0, 1);
-//    }
     else {
       endPoints = std::make_pair(-1, 1);
     }
@@ -282,7 +276,7 @@ namespace nalu{
         return make_unique<HigherOrderHexSCV>(basis, quad);
       
       default:
-        NaluEnv::self().naluOutputP0() << "sorry, we only support QUAD_4_2D, TET_4_2D, TRI_3_2D and HEX_8 base topology for superelements" << std::endl;
+        NaluEnv::self().naluOutputP0() << "sorry, we only support QUAD_4_2D, TET_4, TRI_3_2D and HEX_8 base topology for superelements" << std::endl;
         break;
     }
     return nullptr;

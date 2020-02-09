@@ -10,6 +10,7 @@ add_sources(GlobalSourceList
    FlowPastCylinderTempAuxFunction.C
    KovasznayPressureAuxFunction.C
    KovasznayVelocityAuxFunction.C
+   LaplaceValidationAuxFunction.C
    LinearIncreaseMatchingCornersAuxFunction.C
    LinearRampMeshDisplacementAuxFunction.C
    OneTwoTenVelocityAuxFunction.C

@@ -184,12 +184,6 @@ AssembleScalarElemDiffSolverAlgorithm::execute()
 
       for ( int ni = 0; ni < num_nodes; ++ni ) {
         stk::mesh::Entity node = node_rels[ni];
-//        std::cout << "#######################" << std::endl;
-//        std::cout << "current node print:    " << node << std::endl;
-//        std::cout << "current node offset:   " << node.local_offset() << std::endl;
-//        std::cout << "current node key:      " << bulk_data.entity_key(node) << std::endl;
-//        std::cout << "current node id:       " << bulk_data.identifier(node) << std::endl;
-//        std::cout << "current node local id: " << bulk_data.local_id(node) << std::endl;
 
         // set connected nodes
         connected_nodes[ni] = node;
@@ -197,7 +191,7 @@ AssembleScalarElemDiffSolverAlgorithm::execute()
         // pointers to real data
         const double * coords = stk::mesh::field_data(*coordinates_, node );
         
-//        std::cout << "Node " << ni+1 << ", Coords: " << coords[0] << " " << coords[1] << std::endl;
+//        std::cout << "Node " << ni << ", Ordinal = " << node << ", Coords = {" << coords[0] << ", " << coords[1] << "}" << std::endl;
 
         // gather scalars
         p_scalarQNp1[ni]    = *stk::mesh::field_data(scalarQNp1, node );
@@ -252,6 +246,8 @@ AssembleScalarElemDiffSolverAlgorithm::execute()
 //            std::cout << "node: " << ic << ", dim: " << j << ", dndx: " << p_dndx[offSetDnDx+j] << ", area_vec[" << ip*nDim+j << "] = "<< p_scs_areav[ip*nDim+j] << std::endl;
             lhsfacDiff += -muIp*p_dndx[offSetDnDx+j]*p_scs_areav[ip*nDim+j];
           }
+          
+//          std::cout << "dndx = " << p_dndx[offSetDnDx+0] << ", dndy = " << p_dndx[offSetDnDx+1] << std::endl;
 
           qDiff += lhsfacDiff*p_scalarQNp1[ic];
 

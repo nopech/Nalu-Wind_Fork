@@ -51,9 +51,6 @@ HigherOrderTetSCS::HigherOrderTetSCS(
 #endif
   basis_(std::move(basis)),
   quadrature_(std::move(quadrature))
-#ifndef KOKKOS_ENABLE_CUDA
-  , expRefGradWeights_("reference_gradient_weights", 1, basis.num_nodes())
-#endif
 {
   MasterElement::nDim_ = 3;
   nodesPerElement_ = (polyOrder_+3)*(polyOrder_+2)*(polyOrder_+1)/6; // Tetrahedral number
@@ -103,7 +100,10 @@ HigherOrderTetSCS::HigherOrderTetSCS(
 #endif
 }
 
-std::vector<double> HigherOrderTetSCS::getCentroid(std::vector<ordinal_type>& nodeOrdinals, std::unique_ptr<ElementDescription>& eleDesc) {
+std::vector<double> 
+HigherOrderTetSCS::getCentroid(std::vector<ordinal_type>& nodeOrdinals, 
+                               std::unique_ptr<ElementDescription>& eleDesc) 
+{
   const double length = (double)nodeOrdinals.size();
   const double factor = 1.0/length;
   std::vector<double> centroid(3, 0.0);
@@ -267,142 +267,135 @@ HigherOrderTetSCS::set_interior_info()
   } // subElement
 }
 
-// TODO adapt to tet, copied from hex
-int HigherOrderTetSCS::opposing_face_map(int k, int l, int i, int j, int face_index)
-{
-  // content is deleted, look at HigherOrderHexSCS as an example
-  return 0;
-}
-
 void
 HigherOrderTetSCS::set_boundary_info()
 {
-  const int numFaces = 4;
-  const int nodesPerFace = 0.5*(nodes1D_*(nodes1D_+1)); // triangular number
-  ipsPerFace_ = nodesPerFace * numQuad_ * numQuad_;
-  
-  const int numFaceIps = numFaces*ipsPerFace_;
-  ipNodeMap_ = Kokkos::View<int*>("owning_node_for_ip", numFaceIps);
-  intgExpFace_ = Kokkos::View<double**>("exposed_face_integration_loc", numFaceIps, nDim_);
-  ipWeightsExpFace_ = Kokkos::View<double*>("ip_weightExpFace", numFaceIps);
-  
-  auto desc = ElementDescription::create(3, polyOrder_, stk::topology::TET_4);
-  int numSubfacePerFace;
-  std::vector<std::vector<int>> subfaceCreationIndices;
-  
-  if (polyOrder_ == 1) {
-    numSubfacePerFace = 1;
-    subfaceCreationIndices = {
-      {0, 1, 2}
-    };
-  }
-  else if (polyOrder_ == 2) {
-    numSubfacePerFace = 4;
-    subfaceCreationIndices = {
-      {0, 1, 3},
-      {1, 2, 4},
-      {1, 3, 4},
-      {3, 4, 5}
-    };
-  }
-  else {
-    ThrowErrorMsg("Only P1 and P2 is defined for TET_4 elements.");
-  }
-  
-  subsurfaceNodeLocBC_.resize(numFaces * numSubfacePerFace * numSubsurfacesPerSubface_ * 4, std::vector<double>(3));
-  
-  int countIP = 0;
-  
-  // iterate through each face of the element
-  for (int face = 0; face < numFaces; ++face) {
-  
-    // iterate through each subface of the face
-    for (int subFace = 0; subFace < numSubfacePerFace; ++subFace) {
-      
-      // compute subsurface node location and save it for later usage in areav computation
-      // compute subface centroid
-      std::vector<ordinal_type> subfaceOrdinals(3);
-      for (int i = 0; i < 3; ++i) {
-        const int subfaceNodeIndex = subfaceCreationIndices[subFace][i];
-        subfaceOrdinals[i] = desc->faceNodeMap[face][subfaceNodeIndex];
-      }
-      std::vector<double> subfaceCentroid = getCentroid(subfaceOrdinals, desc);
-    
-      // compute subedge centroids
-      std::vector<std::vector<ordinal_type>> subedgeOrdinals = {
-        {subfaceOrdinals[0], subfaceOrdinals[1]},
-        {subfaceOrdinals[1], subfaceOrdinals[2]},
-        {subfaceOrdinals[2], subfaceOrdinals[0]}
-      };
-      std::vector<double> subedge1Centroid = getCentroid(subedgeOrdinals[0], desc);
-      std::vector<double> subedge2Centroid = getCentroid(subedgeOrdinals[1], desc);
-      std::vector<double> subedge3Centroid = getCentroid(subedgeOrdinals[2], desc);
-        
-      const int subsurfaceNodeLocIndex = face*numSubfacePerFace*numSubsurfacesPerSubface_*4 + subFace*numSubsurfacesPerSubface_*4;
-//      std::cout << "subsurfaceNodeLocIndex = " << subsurfaceNodeLocIndex << std::endl;
-      
-      // subsurface 1
-      subsurfaceNodeLocBC_[subsurfaceNodeLocIndex + 0] = subfaceCentroid;
-      subsurfaceNodeLocBC_[subsurfaceNodeLocIndex + 1] = subedge1Centroid;
-      subsurfaceNodeLocBC_[subsurfaceNodeLocIndex + 2] = desc->nodeLocs[subfaceOrdinals[0]];
-      subsurfaceNodeLocBC_[subsurfaceNodeLocIndex + 3] = subedge3Centroid;
-      
-      // subsurface 2
-      subsurfaceNodeLocBC_[subsurfaceNodeLocIndex + 4] = subfaceCentroid;
-      subsurfaceNodeLocBC_[subsurfaceNodeLocIndex + 5] = subedge2Centroid;
-      subsurfaceNodeLocBC_[subsurfaceNodeLocIndex + 6] = desc->nodeLocs[subfaceOrdinals[1]];
-      subsurfaceNodeLocBC_[subsurfaceNodeLocIndex + 7] = subedge1Centroid;
-      
-      // subsurface 3
-      subsurfaceNodeLocBC_[subsurfaceNodeLocIndex + 8] = subfaceCentroid;
-      subsurfaceNodeLocBC_[subsurfaceNodeLocIndex + 9] = subedge3Centroid;
-      subsurfaceNodeLocBC_[subsurfaceNodeLocIndex + 10] = desc->nodeLocs[subfaceOrdinals[2]];
-      subsurfaceNodeLocBC_[subsurfaceNodeLocIndex + 11] = subedge2Centroid;
-      
-      // isoparametric mapping
-      for (int subSurf = 0; subSurf < 3; ++subSurf) {
-        
-        const int nearNode = subfaceOrdinals[subSurf];
-        
-        // isoparametric mapping of the intgLoc of a isoparametric rectangle to the isoparametric tet
-        int countHexSF = 0;
-        for (int quadPoint = 0; quadPoint < numQuad_; ++quadPoint) { // for each ip at subsurf
-//          std::cout << "new quadpoint" << std::endl;
-          
-          int quadIndex = 0;
-          if (quadPoint >= quadrature_.num_quad()) {
-            quadIndex = quadPoint - quadrature_.num_quad();
-          }
-          else {
-            quadIndex = quadPoint;
-          }
-
-          // IP weight
-          int orientation = 1;
-          ipWeightsExpFace_(countIP) = orientation * quadrature_.weights(quadIndex) * quadrature_.weights(quadIndex);
-          ipNodeMap_(countIP) = nearNode;
-
-          for (int k = 0; k < 2; ++k) { // repeat 2 times because hex shape functions have 8 nodes but the subsurf has 4 nodes
-
-            for (int i = 0; i < 4; ++i) { // for each node of the subsurf
-              const int subsurfaceNodeLocIndex = face*numSubfacePerFace*numSubsurfacesPerSubface_*4 + subFace*numSubsurfacesPerSubface_*4 + subSurf*4 + i;
-//              std::cout << "second subsurfaceNodeLocIndex = " << subsurfaceNodeLocIndex << std::endl;
-
-              for (int j = 0; j < 3; ++j) { // for each dimension
-                intgExpFace_(countIP, j) += (shape_fcnHex_[countHexSF] * subsurfaceNodeLocBC_[subsurfaceNodeLocIndex][j]);
-              }
-
-              countHexSF++;
-            }
-          }
-
-//          std::cout << "isoCalc intgExpFace: " << intgExpFace_(countIP, 0) << ", " << intgExpFace_(countIP, 1) << ", " << intgExpFace_(countIP, 2) << std::endl;
-          countIP++;
-
-        } // ip
-      }
-    }
-  }
+//  const int numFaces = 4;
+//  const int nodesPerFace = 0.5*(nodes1D_*(nodes1D_+1)); // triangular number
+//  ipsPerFace_ = nodesPerFace * numQuad_ * numQuad_;
+//  
+//  const int numFaceIps = numFaces*ipsPerFace_;
+//  ipNodeMap_ = Kokkos::View<int*>("owning_node_for_ip", numFaceIps);
+//  intgExpFace_ = Kokkos::View<double**>("exposed_face_integration_loc", numFaceIps, nDim_);
+//  ipWeightsExpFace_ = Kokkos::View<double*>("ip_weightExpFace", numFaceIps);
+//  
+//  auto desc = ElementDescription::create(3, polyOrder_, stk::topology::TET_4);
+//  int numSubfacePerFace;
+//  std::vector<std::vector<int>> subfaceCreationIndices;
+//  
+//  if (polyOrder_ == 1) {
+//    numSubfacePerFace = 1;
+//    subfaceCreationIndices = {
+//      {0, 1, 2}
+//    };
+//  }
+//  else if (polyOrder_ == 2) {
+//    numSubfacePerFace = 4;
+//    subfaceCreationIndices = {
+//      {0, 1, 3},
+//      {1, 2, 4},
+//      {1, 3, 4},
+//      {3, 4, 5}
+//    };
+//  }
+//  else {
+//    ThrowErrorMsg("Only P1 and P2 is defined for TET_4 elements.");
+//  }
+//  
+//  subsurfaceNodeLocBC_.resize(numFaces * numSubfacePerFace * numSubsurfacesPerSubface_ * 4, std::vector<double>(3));
+//  
+//  int countIP = 0;
+//  
+//  // iterate through each face of the element
+//  for (int face = 0; face < numFaces; ++face) {
+//  
+//    // iterate through each subface of the face
+//    for (int subFace = 0; subFace < numSubfacePerFace; ++subFace) {
+//      
+//      // compute subsurface node location and save it for later usage in areav computation
+//      // compute subface centroid
+//      std::vector<ordinal_type> subfaceOrdinals(3);
+//      for (int i = 0; i < 3; ++i) {
+//        const int subfaceNodeIndex = subfaceCreationIndices[subFace][i];
+//        subfaceOrdinals[i] = desc->faceNodeMap[face][subfaceNodeIndex];
+//      }
+//      std::vector<double> subfaceCentroid = getCentroid(subfaceOrdinals, desc);
+//    
+//      // compute subedge centroids
+//      std::vector<std::vector<ordinal_type>> subedgeOrdinals = {
+//        {subfaceOrdinals[0], subfaceOrdinals[1]},
+//        {subfaceOrdinals[1], subfaceOrdinals[2]},
+//        {subfaceOrdinals[2], subfaceOrdinals[0]}
+//      };
+//      std::vector<double> subedge1Centroid = getCentroid(subedgeOrdinals[0], desc);
+//      std::vector<double> subedge2Centroid = getCentroid(subedgeOrdinals[1], desc);
+//      std::vector<double> subedge3Centroid = getCentroid(subedgeOrdinals[2], desc);
+//        
+//      const int subsurfaceNodeLocIndex = face*numSubfacePerFace*numSubsurfacesPerSubface_*4 + subFace*numSubsurfacesPerSubface_*4;
+////      std::cout << "subsurfaceNodeLocIndex = " << subsurfaceNodeLocIndex << std::endl;
+//      
+//      // subsurface 1
+//      subsurfaceNodeLocBC_[subsurfaceNodeLocIndex + 0] = subfaceCentroid;
+//      subsurfaceNodeLocBC_[subsurfaceNodeLocIndex + 1] = subedge1Centroid;
+//      subsurfaceNodeLocBC_[subsurfaceNodeLocIndex + 2] = desc->nodeLocs[subfaceOrdinals[0]];
+//      subsurfaceNodeLocBC_[subsurfaceNodeLocIndex + 3] = subedge3Centroid;
+//      
+//      // subsurface 2
+//      subsurfaceNodeLocBC_[subsurfaceNodeLocIndex + 4] = subfaceCentroid;
+//      subsurfaceNodeLocBC_[subsurfaceNodeLocIndex + 5] = subedge2Centroid;
+//      subsurfaceNodeLocBC_[subsurfaceNodeLocIndex + 6] = desc->nodeLocs[subfaceOrdinals[1]];
+//      subsurfaceNodeLocBC_[subsurfaceNodeLocIndex + 7] = subedge1Centroid;
+//      
+//      // subsurface 3
+//      subsurfaceNodeLocBC_[subsurfaceNodeLocIndex + 8] = subfaceCentroid;
+//      subsurfaceNodeLocBC_[subsurfaceNodeLocIndex + 9] = subedge3Centroid;
+//      subsurfaceNodeLocBC_[subsurfaceNodeLocIndex + 10] = desc->nodeLocs[subfaceOrdinals[2]];
+//      subsurfaceNodeLocBC_[subsurfaceNodeLocIndex + 11] = subedge2Centroid;
+//      
+//      // isoparametric mapping
+//      for (int subSurf = 0; subSurf < 3; ++subSurf) {
+//        
+//        const int nearNode = subfaceOrdinals[subSurf];
+//        
+//        // isoparametric mapping of the intgLoc of a isoparametric rectangle to the isoparametric tet
+//        int countHexSF = 0;
+//        for (int quadPoint = 0; quadPoint < numQuad_; ++quadPoint) { // for each ip at subsurf
+////          std::cout << "new quadpoint" << std::endl;
+//          
+//          int quadIndex = 0;
+//          if (quadPoint >= quadrature_.num_quad()) {
+//            quadIndex = quadPoint - quadrature_.num_quad();
+//          }
+//          else {
+//            quadIndex = quadPoint;
+//          }
+//
+//          // IP weight
+//          int orientation = 1;
+//          ipWeightsExpFace_(countIP) = orientation * quadrature_.weights(quadIndex) * quadrature_.weights(quadIndex);
+//          ipNodeMap_(countIP) = nearNode;
+//
+//          for (int k = 0; k < 2; ++k) { // repeat 2 times because hex shape functions have 8 nodes but the subsurf has 4 nodes
+//
+//            for (int i = 0; i < 4; ++i) { // for each node of the subsurf
+//              const int subsurfaceNodeLocIndex = face*numSubfacePerFace*numSubsurfacesPerSubface_*4 + subFace*numSubsurfacesPerSubface_*4 + subSurf*4 + i;
+////              std::cout << "second subsurfaceNodeLocIndex = " << subsurfaceNodeLocIndex << std::endl;
+//
+//              for (int j = 0; j < 3; ++j) { // for each dimension
+//                intgExpFace_(countIP, j) += (shape_fcnHex_[countHexSF] * subsurfaceNodeLocBC_[subsurfaceNodeLocIndex][j]);
+//              }
+//
+//              countHexSF++;
+//            }
+//          }
+//
+////          std::cout << "isoCalc intgExpFace: " << intgExpFace_(countIP, 0) << ", " << intgExpFace_(countIP, 1) << ", " << intgExpFace_(countIP, 2) << std::endl;
+//          countIP++;
+//
+//        } // ip
+//      }
+//    }
+//  }
 }
 
 void
@@ -571,24 +564,6 @@ HigherOrderTetSCS::side_node_ordinals (int ordinal) const
   return &sideNodeOrdinals_(ordinal,0);
 }
 
-// TODO adapt to tet, copied from hex
-int
-HigherOrderTetSCS::opposingNodes(
-  const int ordinal,
-  const int node)
-{
-  return oppNode_[ordinal*ipsPerFace_+node];
-}
-
-// TODO adapt to tet, copied from hex
-int
-HigherOrderTetSCS::opposingFace(
-  const int ordinal,
-  const int node)
-{
-  return oppFace_[ordinal*ipsPerFace_+node];
-}
-
 void
 HigherOrderTetSCS::determinant(
   const int  /* nelem */,
@@ -733,79 +708,6 @@ void HigherOrderTetSCS::grad_op(
     grad_offset += grad_inc;
   }
 }
-
-// TODO adapt to tet, copied from hex
-void HigherOrderTetSCS::face_grad_op(
-  const int nelem,
-  const int face_ordinal,
-  const double *coords,
-  double *gradop,
-  double *det_j,
-  double *error)
-{
-  *error = 0.0;
-  ThrowRequireMsg(nelem == 1, "face_grad_op is executed one element at a time for HO");
-  
-  // content is deleted, look at HigherOrderHexSCS as an example
-}
-
-void HigherOrderTetSCS::gij(
-  const double *coords,
-  double *gupperij,
-  double *glowerij,
-  double *deriv)
-{
-  // content is deleted, look at HigherOrderHexSCS as an example
-}
-
-// TODO adapt to tet, copied from hex
-double HigherOrderTetSCS::isInElement(
-    const double *elemNodalCoord,
-    const double *pointCoord,
-    double *isoParCoord)
-{
-  // content is deleted, look at HigherOrderHexSCS as an example
-
-  return 0.0;
-}
-
-void HigherOrderTetSCS::interpolatePoint(
-  const int &nComp,
-  const double *isoParCoord,
-  const double *field,
-  double *result)
-{
-  const auto& weights = basis_.point_interpolation_weights(isoParCoord);
-  for (int n = 0; n < nComp; ++n) {
-    result[n] = ddot(weights.data(), field + n * nodesPerElement_, nodesPerElement_);
-  }
-}
-
-template <int p> void internal_face_grad_op(
-  int face_ordinal,
-  const AlignedViewType<DoubleType**[3]>& expReferenceGradWeights,
-  SharedMemView<DoubleType**, DeviceShmem>& coords,
-  SharedMemView<DoubleType***, DeviceShmem>& gradop )
-{
-  // content is deleted, look at HigherOrderHexSCS as an example
-}
-
-// TODO adapt to tet, copied from hex
-#ifndef KOKKOS_ENABLE_CUDA
-void HigherOrderTetSCS::face_grad_op(
-  int face_ordinal,
-  SharedMemView<DoubleType**, DeviceShmem>& coords,
-  SharedMemView<DoubleType***, DeviceShmem>& gradop)
-{
-  // content is deleted, look at HigherOrderHexSCS as an example
-}
-#else
-void HigherOrderTetSCS::face_grad_op(
-  int ,
-  SharedMemView<DoubleType**, DeviceShmem>& ,
-  SharedMemView<DoubleType***, DeviceShmem>& )
-{}
-#endif
 
 }  // namespace nalu
 } // namespace sierra

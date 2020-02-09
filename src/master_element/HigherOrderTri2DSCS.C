@@ -61,55 +61,6 @@ HigherOrderTri2DSCS::HigherOrderTri2DSCS(
 #endif
 }
 
-double parametric_distance_tri(const double* x) // TODO check purpose and adapt to tri
-{
-  double absXi  = std::abs(x[0]);
-  double absEta = std::abs(x[1]);
-  return (absXi > absEta) ? absXi : absEta;
-}
-
-// Used for non-conformal and overset
-// TODO adapt to TrI (copied from quad)
-double HigherOrderTri2DSCS::isInElement(
-    const double *elemNodalCoord,
-    const double *pointCoord,
-    double *isoParCoord)
-{
-  std::array<double, 2> initialGuess = {{ 0.0, 0.0 }};
-  int maxIter = 50;
-  double tolerance = 1.0e-16;
-  double deltaLimit = 1.0e4;
-
-  bool converged = isoparameteric_coordinates_for_point_2d(
-      basis_,
-      elemNodalCoord,
-      pointCoord,
-      isoParCoord,
-      initialGuess,
-      maxIter,
-      tolerance,
-      deltaLimit
-  );
-  ThrowAssertMsg(parametric_distance_quad(isoParCoord) < 1.0 + 1.0e-6 || !converged,
-      "Inconsistency in parametric distance calculation");
-
-  return (converged) ? parametric_distance_tri(isoParCoord) : std::numeric_limits<double>::max();
-}
-
-// Not sure about its use
-// TODO adapt to TrI (copied from quad)
-void HigherOrderTri2DSCS::interpolatePoint(
-  const int &nComp,
-  const double *isoParCoord,
-  const double *field,
-  double *result)
-{
-  const auto& weights = basis_.point_interpolation_weights(isoParCoord);
-  for (int n = 0; n < nComp; ++n) {
-    result[n] = ddot(weights.data(), field + n * nodesPerElement_, nodesPerElement_);
-  }
-}
-
 std::vector<double> 
 HigherOrderTri2DSCS::getCentroid(std::vector<ordinal_type> nodeOrdinals, std::unique_ptr<ElementDescription>& eleDesc) {
   const double length = (double)nodeOrdinals.size();
@@ -152,16 +103,21 @@ HigherOrderTri2DSCS::set_interior_info()
     intSubfaces_(subFC, 1, 1) = subEdgeCentroid[1];
     subFC++;
     
+    const double scsLength_x = subEdgeCentroid[0] - subTriCentroid[0];
+    const double scsLength_y = subEdgeCentroid[1] - subTriCentroid[1];
+    const double scsLength = std::sqrt(scsLength_x*scsLength_x + scsLength_y*scsLength_y);
+    double xl = 0;
+    double xr = scsLength;
+    
     for (int j = 0; j < numQuad_; ++j) {
       const double abscissa = quadrature_.abscissa(j);
       ipWeights_(count) = orientation * quadrature_.weights(j);
-//      std::cout << "ipWeights_(" << count << ") = " << ipWeights_(count) << std::endl;
       lrscv_(2*count) = left;
       lrscv_(2*count+1) = right;
-//      std::cout << "left node: " << lrscv_(2*count) << ", right node: " << lrscv_(2*count+1) << std::endl;
+      
+      const double intgLoc1D = 0.5*( abscissa*(xr-xl)+(xl+xr));
       for (int i = 0; i < 2; ++i) {
-        intgLoc_(count, i) = subTriCentroid[i] + 0.5 * ( abscissa + 1) * (subEdgeCentroid[i] - subTriCentroid[i] );
-//        std::cout << "intgLoc_(" << count << ", " << i << ") = " << intgLoc_(count, i) << std::endl;
+        intgLoc_(count, i) = subTriCentroid[i] + (intgLoc1D/scsLength)*( subEdgeCentroid[i]-subTriCentroid[i] );
       }
       count++;
     }
@@ -497,7 +453,7 @@ void HigherOrderTri2DSCS::tri_deriv_shape_fcn_p2(
     deriv[8 + twelvej] =   4.0*eta;                // IP j, Node 4, dxi
     deriv[9 + twelvej] =   4.0*xi;                 // IP j, Node 4, deta
     deriv[10 + twelvej] = -4.0*eta;                // IP j, Node 5, dxi
-    deriv[11 + twelvej] = -4.0*(2.0*eta+xi-1.0);     // IP j, Node 5, deta
+    deriv[11 + twelvej] = -4.0*(2.0*eta+xi-1.0);   // IP j, Node 5, deta
   }
 }
 
@@ -566,6 +522,7 @@ HigherOrderTri2DSCS::determinant(
         realCoords(i, 1) += (shape_fcn[count] * coords[j * nDim_ + 1]);
         count++;
       }
+//      std::cout << "realCoord_x = " << realCoords(i, 0) << ", realCoord_y = " << realCoords(i, 1) << std::endl;
     }
 
     const double Bx = realCoords(0, 0);
@@ -584,7 +541,7 @@ HigherOrderTri2DSCS::determinant(
       // 90° rotation of the vector {dx, dy} to get area normal vector
       areav[(offset + ip) * nDim_ + 0] =  dy * weight;
       areav[(offset + ip) * nDim_ + 1] = -dx * weight;
-      
+        
 //      std::cout << std::endl;
 //      std::cout << "new IP" << std::endl;
 //      std::cout << "areav = {" << dy*weight << ", " << -dx*weight << "}" << std::endl;
@@ -636,99 +593,12 @@ void HigherOrderTri2DSCS::grad_op(
   }
 }
 
-void
-HigherOrderTri2DSCS::face_grad_op(
-  const int nelem,
-  const int face_ordinal,
-  const double *coords,
-  double *gradop,
-  double *det_j,
-  double *error)
-{
-  *error = 0.0;
-  ThrowRequireMsg(nelem == 1, "face_grad_op is executed one element at a time for HO");
-
-  int grad_offset = 0;
-  int grad_inc = nDim_ * nodesPerElement_;
-
-  const int face_offset =  nDim_ * ipsPerFace_ * nodesPerElement_ * face_ordinal;
-  const double* const faceShapeDerivs = &expFaceShapeDerivs_.data()[face_offset];
-
-  for (int ip = 0; ip < ipsPerFace_; ++ip) {
-    gradient_2d(
-      nodesPerElement_,
-      coords,
-      &faceShapeDerivs[grad_offset],
-      &gradop[grad_offset],
-      &det_j[ip]
-   );
-
-    if (det_j[ip] < tiny_positive_value()) {
-      *error = 1.0;
-    }
-
-    grad_offset += grad_inc;
-  }
-}
-
 
 const int *
 HigherOrderTri2DSCS::adjacentNodes()
 {
   // define L/R mappings
   return lrscv_.data();
-}
-
-int
-HigherOrderTri2DSCS::opposingNodes(
-  const int ordinal,
-  const int node)
-{
-  return oppNode_(ordinal*ipsPerFace_+node);
-}
-
-int
-HigherOrderTri2DSCS::opposingFace(
-  const int ordinal,
-  const int node)
-{
-  return oppFace_(ordinal*ipsPerFace_+node);
-}
-
-template <Jacobian::Direction direction> void
-HigherOrderTri2DSCS::area_vector(
-  const double *POINTER_RESTRICT elemNodalCoords,
-  double *POINTER_RESTRICT shapeDeriv,
-  double *POINTER_RESTRICT normalVec ) const
-{
-  constexpr int s1Component = (direction == Jacobian::S_DIRECTION) ?
-      Jacobian::T_DIRECTION : Jacobian::S_DIRECTION;
-
-  double dxdr = 0.0;  double dydr = 0.0;
-  for (int node = 0; node < nodesPerElement_; ++node) {
-    const int vector_offset = nDim_ * node;
-    const double xCoord = elemNodalCoords[vector_offset+0];
-    const double yCoord = elemNodalCoords[vector_offset+1];
-
-    dxdr += shapeDeriv[vector_offset+s1Component] * xCoord;
-    dydr += shapeDeriv[vector_offset+s1Component] * yCoord;
-  }
-
-  normalVec[0] =  dydr;
-  normalVec[1] = -dxdr;
-}
-
-void HigherOrderTri2DSCS::gij(
-  const double *coords,
-  double *gupperij,
-  double *glowerij,
-  double *deriv)
-{
-  SIERRA_FORTRAN(twod_gij)
-    ( &nodesPerElement_,
-      &numIntPoints_,
-      deriv,
-      coords, gupperij, glowerij);
 }
 
 } // namespace nalu
